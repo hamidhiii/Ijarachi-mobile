@@ -1,11 +1,23 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useState, useMemo } from 'react';
-import { RefreshControl, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import ProductCard from '../components/ProductCard';
-import { Colors } from '../constants/Colors';
-import { CATEGORIES, ITEMS } from '../constants/data';
+import { 
+  RefreshControl, 
+  SafeAreaView, 
+  ScrollView, 
+  StatusBar, 
+  StyleSheet, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  View 
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import ProductCard from '../../components/ProductCard';
+import { Colors } from '../../constants/Colors';
+import { CATEGORIES, ITEMS } from '../../constants/data';
 
 export default function HomeScreen() {
+  const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   
   // СОСТОЯНИЕ ДЛЯ ВЫБРАННОЙ КАТЕГОРИИ
@@ -15,11 +27,11 @@ export default function HomeScreen() {
     setRefreshing(true);
     setTimeout(() => {
       setRefreshing(false);
-      setSelectedCategory('all'); // Сбрасываем фильтр при обновлении страницы
+      setSelectedCategory('all'); // Сбрасываем фильтр при обновлении
     }, 1000);
   }, []);
 
-  // ЛОГИКА ФИЛЬТРАЦИИ: берем данные из ITEMS и фильтруем по выбранному ID
+  // ЛОГИКА ФИЛЬТРАЦИИ
   const filteredItems = useMemo(() => {
     if (selectedCategory === 'all') return ITEMS;
     return ITEMS.filter(item => item.category === selectedCategory);
@@ -60,7 +72,6 @@ export default function HomeScreen() {
         {/* СЕКЦИЯ КАТЕГОРИЙ */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Категории Ijarachi</Text>
-          
           <ScrollView 
             horizontal 
             showsHorizontalScrollIndicator={false} 
@@ -69,7 +80,7 @@ export default function HomeScreen() {
             {CATEGORIES.map(cat => (
               <TouchableOpacity 
                 key={cat.id} 
-                style={styles.categoryCard}
+                style={styles.categoryCard} 
                 onPress={() => setSelectedCategory(cat.id)}
                 activeOpacity={0.7}
               >
@@ -84,10 +95,10 @@ export default function HomeScreen() {
                   />
                 </View>
                 <Text style={[
-                    styles.categoryText,
-                    selectedCategory === cat.id && { color: Colors.primary }
+                  styles.categoryText, 
+                  selectedCategory === cat.id && { color: Colors.primary }
                 ]}>
-                    {cat.title}
+                  {cat.title}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -116,18 +127,9 @@ export default function HomeScreen() {
           </View>
         </View>
         
-        {/* Отступ снизу, чтобы контент не закрывался навигацией */}
+        {/* ОТСТУП СНИЗУ: чтобы парящий NavBar не закрывал нижние товары */}
         <View style={{ height: 120 }} />
       </ScrollView>
-
-      {/* НИЖНЯЯ НАВИГАЦИЯ */}
-      <View style={styles.bottomNav}>
-          <TouchableOpacity><Ionicons name="home" size={26} color={Colors.secondary} /></TouchableOpacity>
-          <TouchableOpacity><Ionicons name="heart-outline" size={26} color={Colors.secondary} /></TouchableOpacity>
-          <View style={styles.addBtn}><Ionicons name="add" size={32} color={Colors.text} /></View>
-          <TouchableOpacity><Ionicons name="chatbubble-outline" size={26} color={Colors.secondary} /></TouchableOpacity>
-          <TouchableOpacity><Ionicons name="person-outline" size={26} color={Colors.secondary} /></TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 }
@@ -157,7 +159,7 @@ const styles = StyleSheet.create({
   },
   categoriesScroll: { 
     paddingHorizontal: 16, 
-    gap: 15, // Расстояние между карточками
+    gap: 15,
     paddingBottom: 5
   },
   categoryCard: { 
@@ -207,29 +209,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500'
   },
-  bottomNav: { 
-    position: 'absolute', 
-    bottom: 0, 
-    width: '100%', 
-    height: 90, 
-    backgroundColor: Colors.primary, 
-    flexDirection: 'row', 
-    justifyContent: 'space-around', 
-    alignItems: 'center', 
-    borderTopLeftRadius: 30, 
-    borderTopRightRadius: 30, 
-    paddingBottom: 25 
-  },
-  addBtn: { 
-    width: 60, 
-    height: 60, 
-    borderRadius: 30, 
-    backgroundColor: Colors.secondary, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    marginTop: -35, 
-    borderWidth: 5, 
-    borderColor: Colors.background,
-    elevation: 5
-  }
 });

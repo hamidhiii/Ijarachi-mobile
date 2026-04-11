@@ -7,15 +7,15 @@ import { ITEMS } from '../../constants/data';
 
 export default function OrderSummary() {
   const router = useRouter();
-  
+
   // Получаем параметры из ProductDetail
   const { id, days, qty, startDate, endDate } = useLocalSearchParams();
-  
+
   const product = ITEMS.find(p => p.id === id) || ITEMS[0];
   const daysCount = parseInt(days as string) || 1;
   const quantity = parseInt(qty as string) || 1;
   const pricePerDay = parseInt(product.price.replace(/[^0-9]/g, ''));
-  
+
   // Итоговый расчет: Цена * Дни * Количество
   const rentTotal = pricePerDay * daysCount * quantity;
   const insuranceFee = Math.round(rentTotal * 0.05); // 5% Страховой взнос
@@ -44,13 +44,13 @@ export default function OrderSummary() {
           <Image source={product.image} style={styles.productImg} />
           <View style={styles.productInfo}>
             <Text style={styles.productTitle} numberOfLines={1}>{product.title}</Text>
-            
+
             {/* Отображение периода аренды */}
             <View style={styles.infoRow}>
               <Ionicons name="calendar-outline" size={14} color="#64748B" />
               <Text style={styles.productSub}>
-                {startDate === endDate 
-                  ? formatDate(startDate as string) 
+                {startDate === endDate
+                  ? formatDate(startDate as string)
                   : `${formatDate(startDate as string)} — ${formatDate(endDate as string)}`}
                 {` (${daysCount} дн.)`}
               </Text>
@@ -74,7 +74,7 @@ export default function OrderSummary() {
             </Text>
             <Text style={styles.value}>{rentTotal.toLocaleString()} сум</Text>
           </View>
-          
+
           <View style={styles.row}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
               <Text style={styles.label}>Страховой взнос (5%)</Text>
@@ -98,11 +98,17 @@ export default function OrderSummary() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity 
-          style={styles.payBtn} 
+        <TouchableOpacity
+          style={styles.payBtn}
           onPress={() => router.push({
             pathname: '/checkout/Payment',
-            params: { amount: totalAmount }
+            params: {
+              amount: totalAmount,
+              itemId: id,
+              startDate: startDate as string,
+              endDate: endDate as string,
+              days: daysCount,
+            }
           })}
         >
           <Text style={styles.payBtnText}>Перейти к оплате</Text>

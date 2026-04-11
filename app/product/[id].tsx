@@ -1,11 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { Alert, Dimensions, Image, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'; // ПРАВИЛЬНЫЙ ИМПОРТ ТУТ
+import { Alert, Dimensions, Image, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, Platform } from 'react-native'; // ПРАВИЛЬНЫЙ ИМПОРТ ТУТ
 import { Calendar } from 'react-native-calendars';
 import { SellerCard } from '../../components/SellerCard';
 import { Colors } from '../../constants/Colors';
 import { ITEMS } from '../../constants/data';
+
+// УМНЫЙ ИМПОРТ ДЛЯ ПРЕДОТВРАЩЕНИЯ ОШИБКИ В ВЕБЕ
+let DateTimePicker: any;
+if (Platform.OS !== 'web') {
+    DateTimePicker = require('@react-native-community/datetimepicker').default;
+}
 
 const { width } = Dimensions.get('window');
 
@@ -23,6 +29,16 @@ export default function ProductDetail() {
     // Состояние для количества (по умолчанию 1)
     const [quantity, setQuantity] = useState(1);
     const [range, setRange] = useState({ start: '', end: '', markedDates: {} });
+
+    // СОСТОЯНИЯ ДЛЯ ВРЕМЕНИ (IPHONE STYLE)
+    const [startTime, setStartTime] = useState(new Date(new Date().setHours(14, 46, 0, 0)));
+    const [endTime, setEndTime] = useState(new Date(new Date().setHours(20, 0, 0, 0)));
+    const [showStartPicker, setShowStartPicker] = useState(false);
+    const [showEndPicker, setShowEndPicker] = useState(false);
+
+    const formatTime = (date: Date) => {
+        return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    };
 
     // const handleBooking = () => {
     //   if (!isAuthenticated) {
@@ -47,7 +63,10 @@ export default function ProductDetail() {
                 days: daysCount, // Если даты одинаковые, daysCount будет 1
                 qty: quantity,   // Передаем выбранное количество
                 startDate: range.start,
-                endDate: range.end
+                endDate: range.end,
+                // ПЕРЕДАЕМ ВРЕМЯ В SUMMARY
+                startTime: range.start === range.end ? formatTime(startTime) : null,
+                endTime: range.start === range.end ? formatTime(endTime) : null,
             }
         });
     };
@@ -196,6 +215,65 @@ export default function ProductDetail() {
                     <SellerCard sellerName={(product as any).seller.name} sellerRole={(product as any).seller.role} />
 
                     <View style={styles.divider} />
+
+                    {/* КАРТОЧКИ ВЫБОРА ДАТЫ */}
+                    <Text style={styles.sectionTitle}>Период аренды</Text>
+                    <View style={styles.dateTimeRow}>
+                        <View style={styles.dateTimeCard}>
+                            <Text style={styles.dateTimeLabelSmall}>Начало</Text>
+                            <Text style={styles.dateTimeValue}>{range.start || '---'}</Text>
+                        </View>
+                        <Ionicons name="arrow-forward" size={18} color="#CBD5E1" />
+                        <View style={styles.dateTimeCard}>
+                            <Text style={styles.dateTimeLabelSmall}>Конец</Text>
+                            <Text style={styles.dateTimeValue}>{range.end || '---'}</Text>
+                        </View>
+                    </View>
+
+                    {/* ВЫБОР ВРЕМЕНИ (IPHONE STYLE) */}
+                    {range.start && range.start === range.end && (
+                        <View style={styles.timeSection}>
+                            <Text style={styles.sectionTitleSmall}>Укажите часы аренды</Text>
+                            <View style={styles.dateTimeRow}>
+                                <TouchableOpacity 
+                                    style={[styles.dateTimeCard, styles.timePickerCardActive]}
+                                    onPress={() => Platform.OS !== 'web' && setShowStartPicker(true)}
+                                >
+                                    <Text style={styles.timeLabelBlue}>С</Text>
+                                    <Text style={styles.timeValue}>{formatTime(startTime)}</Text>
+                                </TouchableOpacity>
+
+                                <Ionicons name="time-outline" size={20} color={Colors.primary} />
+
+                                <TouchableOpacity 
+                                    style={[styles.dateTimeCard, styles.timePickerCardActive]}
+                                    onPress={() => Platform.OS !== 'web' && setShowEndPicker(true)}
+                                >
+                                    <Text style={styles.timeLabelBlue}>До</Text>
+                                    <Text style={styles.timeValue}>{formatTime(endTime)}</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    )}
+
+                    {/* ПИКЕРЫ (ТОЛЬКО ДЛЯ МОБИЛОК) */}
+                    {Platform.OS !== 'web' && (showStartPicker || showEndPicker) && (
+                        <DateTimePicker
+                            value={showStartPicker ? startTime : endTime}
+                            mode="time"
+                            is24Hour={true}
+                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                            textColor="#000000" // Делаем числа черными в карусели
+                            onChange={(event: any, date: any) => {
+                                setShowStartPicker(false);
+                                setShowEndPicker(false);
+                                if (date) {
+                                    showStartPicker ? setStartTime(date) : setEndTime(date);
+                                }
+                            }}
+                        />
+                    )}
+
                     <Text style={styles.sectionTitle}>Выберите даты</Text>
                     <View style={styles.calendarWrapper}>
                         <Calendar
@@ -206,6 +284,15 @@ export default function ProductDetail() {
                             theme={{ selectedDayBackgroundColor: Colors.primary, todayTextColor: Colors.primary, ...({ 'stylesheet.calendar.header': { week: { marginTop: 5, flexDirection: 'row', justifyContent: 'space-between' } } } as any) }}
                         />
                     </View>
+
+                    {/* Инфо о диапазоне (несколько дней) */}
+                    {range.start && range.end && range.start !== range.end && (
+                        <View style={styles.rangeInfoBox}>
+                            <Ionicons name="information-circle-outline" size={20} color={Colors.primary} />
+                            <Text style={styles.rangeText}>Аренда с {range.start} до {range.end}</Text>
+                        </View>
+                    )}
+
                     <View style={{ height: 120 }} />
                 </View>
             </ScrollView>
@@ -226,18 +313,64 @@ export default function ProductDetail() {
 const styles = StyleSheet.create({
     backBtn: { position: 'absolute', top: 50, left: 20, zIndex: 10, backgroundColor: '#FFFFFF', width: 45, height: 45, borderRadius: 15, justifyContent: 'center', alignItems: 'center', elevation: 5 },
     mainImage: { width: width, height: 420, borderBottomLeftRadius: 35, borderBottomRightRadius: 35 },
-    title: { fontSize: 26, fontWeight: '800', color: Colors.text },
+    title: { fontSize: 26, fontWeight: '900', color: '#000000' },
     price: { fontSize: 22, fontWeight: '800', color: Colors.primary, marginTop: 5 },
     perDay: { fontSize: 16, fontWeight: '400', color: '#64748B' },
     divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 20 },
-    sectionTitle: { fontSize: 18, fontWeight: '700', color: Colors.text, marginBottom: 15 },
+    sectionTitle: { fontSize: 18, fontWeight: '700', color: '#000000', marginBottom: 15 },
     description: { fontSize: 15, color: '#64748B', lineHeight: 22 },
     calendarWrapper: { backgroundColor: '#FFFFFF', borderRadius: 25, padding: 10, borderWidth: 1, borderColor: '#F1F5F9' },
     bottomBar: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: '#FFFFFF', padding: 25, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingBottom: 35 },
     totalLabel: { fontSize: 13, color: '#64748B' },
-    totalPrice: { fontSize: 20, fontWeight: '900', color: Colors.text },
+    totalPrice: { fontSize: 20, fontWeight: '900', color: '#000000' },
     bookBtn: { backgroundColor: Colors.primary, paddingVertical: 15, paddingHorizontal: 30, borderRadius: 18 },
     bookBtnText: { color: '#FFFFFF', fontWeight: '700' },
+
+    // Стили для карточек даты/времени
+    dateTimeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 15 },
+    dateTimeCard: { 
+        flex: 1, 
+        backgroundColor: '#F8FAFC', 
+        padding: 12, 
+        borderRadius: 18, 
+        borderWidth: 1, 
+        borderColor: '#F1F5F9', 
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 65
+    },
+    dateTimeLabelSmall: { 
+        fontSize: 10, 
+        color: '#64748B', 
+        fontWeight: '800', 
+        textTransform: 'uppercase', 
+        marginBottom: 4 
+    },
+    dateTimeValue: { 
+        fontSize: 16, 
+        fontWeight: '900', 
+        color: '#000000', // Темный цвет для четкости
+    },
+    
+    // Специфические стили для активных карточек времени (синих)
+    timeSection: { marginTop: 10, marginBottom: 20 },
+    sectionTitleSmall: { fontSize: 14, fontWeight: '700', color: '#000000', marginBottom: 10 },
+    timePickerCardActive: {
+        backgroundColor: '#F0F9FF', 
+        borderColor: '#BAE6FD',
+    },
+    timeValue: { 
+        fontSize: 18, 
+        fontWeight: '900', 
+        color: '#0369A1' 
+    },
+    timeLabelBlue: {
+        color: '#0369A1',
+        fontSize: 10,
+        fontWeight: '800',
+        textTransform: 'uppercase',
+        marginBottom: 4
+    },
 
     // Стили для Stepper
     quantitySection: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -245,7 +378,7 @@ const styles = StyleSheet.create({
     quantityInput: { 
         fontSize: 18, 
         fontWeight: '800', 
-        color: Colors.text,
+        color: '#000000',
         width: 60,
         textAlign: 'center',
         padding: 0 
@@ -260,5 +393,7 @@ const styles = StyleSheet.create({
         borderColor: '#F1F5F9' 
       },
     stepBtn: { width: 38, height: 38, backgroundColor: '#FFFFFF', borderRadius: 10, justifyContent: 'center', alignItems: 'center', elevation: 2 },
-    quantityText: { fontSize: 18, fontWeight: '800', paddingHorizontal: 15, color: Colors.text },
+    
+    rangeInfoBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0F9FF', padding: 15, borderRadius: 15, marginTop: 15, gap: 10 },
+    rangeText: { fontSize: 13, color: '#0369A1', fontWeight: '500' },
 });
