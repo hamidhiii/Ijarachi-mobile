@@ -1,130 +1,112 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router'; // Используем useRouter внутри компонента
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    Alert,
-    KeyboardAvoidingView, Platform,
-    SafeAreaView,
-    StyleSheet, Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import * as authService from '../../services/authService';
 
-export default function Register() {
+export default function RegisterScreen() {
   const router = useRouter();
+  const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // --- ЛОГИКА ГЕНЕРАЦИИ И ОТПРАВКИ КОДА ---
-  const handleSendSMS = () => {
+  const handleRegister = async () => {
+    if (!name.trim()) {
+      Alert.alert('Ошибка', 'Введите ваше имя');
+      return;
+    }
     if (phone.length < 9) {
-      Alert.alert("Ошибка", "Введите полный номер телефона");
+      Alert.alert('Ошибка', 'Введите корректный номер телефона');
       return;
     }
 
     setLoading(true);
-
-    // Имитируем сетевой запрос (задержка 1.5 сек)
-    setTimeout(() => {
-      const generatedCode = Math.floor(1000 + Math.random() * 9000); // 4-значный код
-      
-      // ВЫВОД В КОНСОЛЬ (Смотри в терминал твоего ПК!)
-      console.log("--------------------------------");
-      console.log("📱 IJARACHI AUTH SYSTEM");
-      console.log(`📞 Номер: +998 ${phone}`);
-      console.log(`🔐 ВАШ КОД: ${generatedCode}`);
-      console.log("--------------------------------");
-
-      setLoading(false);
-
-      // Переход на экран верификации с передачей данных
-      router.push({
-        pathname: '/auth/verify', // Убедись, что файл лежит в app/auth/verify.tsx
-        params: { phone: phone, code: generatedCode }
+    try {
+      await authService.register({
+        name,
+        phone: `+998${phone}`,
+        isPinflVerified: false,
       });
-    }, 1500);
+      await authService.sendOTP(`+998${phone}`);
+      router.push({
+        pathname: '/auth/verify',
+        params: { phone: `+998${phone}` }
+      });
+    } catch (error) {
+      Alert.alert('Ошибка', 'Не удалось зарегистрироваться');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-        style={styles.flex}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
       >
-        <View style={styles.content}>
-          <Text style={styles.headerTitle}>Регистрация</Text>
+        <ScrollView contentContainerStyle={styles.content}>
+          <Text style={styles.logoText}>Ijarachi</Text>
+          <Text style={styles.subTitle}>Создайте аккаунт</Text>
 
-          {/* Поле Имя */}
-          <View style={styles.inputWrapper}>
-            <Ionicons name="person-outline" size={20} color={Colors.primary} style={styles.icon} />
-            <TextInput 
-              placeholder="Имя" 
-              placeholderTextColor="#94A3B8" 
-              style={styles.input} 
+          <View style={styles.inputLabelGroup}>
+            <Text style={styles.label}>Как вас зовут?</Text>
+            <TextInput
+              placeholder="Имя Фамилия"
+              placeholderTextColor="#94A3B8"
+              style={styles.input}
+              value={name}
+              onChangeText={setName}
             />
           </View>
 
-          {/* Поле Фамилия */}
-          <View style={styles.inputWrapper}>
-            <Ionicons name="people-outline" size={20} color={Colors.primary} style={styles.icon} />
-            <TextInput 
-              placeholder="Фамилия" 
-              placeholderTextColor="#94A3B8" 
-              style={styles.input} 
-            />
-          </View>
-
-          {/* Поле Телефон с флагом Узб */}
-          <View style={styles.inputWrapper}>
-            <Ionicons name="call-outline" size={20} color={Colors.primary} style={styles.icon} />
-            <View style={styles.uzbPrefix}>
-              <Text style={styles.flag}>🇺🇿</Text>
-              <Text style={styles.prefixText}>+998</Text>
+          <View style={styles.inputLabelGroup}>
+            <Text style={styles.label}>Номер телефона</Text>
+            <View style={styles.inputWrapper}>
+              <View style={styles.uzbPrefix}>
+                <Text style={styles.flag}>🇺🇿</Text>
+                <Text style={styles.prefixText}>+998</Text>
+              </View>
+              <TextInput
+                placeholder="00 000 00 00"
+                placeholderTextColor="#94A3B8"
+                style={styles.phoneInput}
+                keyboardType="phone-pad"
+                value={phone}
+                onChangeText={setPhone}
+                maxLength={9}
+              />
             </View>
-            <TextInput 
-              placeholder="-- --- -- --" 
-              placeholderTextColor="#94A3B8" 
-              style={[styles.input, { paddingLeft: 5 }]} 
-              keyboardType="phone-pad"
-              maxLength={9}
-              value={phone}
-              onChangeText={setPhone}
-            />
           </View>
 
-          {/* Поле Пароль */}
-          <View style={styles.inputWrapper}>
-            <Ionicons name="lock-closed-outline" size={20} color={Colors.primary} style={styles.icon} />
-            <TextInput 
-              placeholder="Придумайте пароль" 
-              placeholderTextColor="#94A3B8" 
-              style={styles.input} 
-              secureTextEntry 
-            />
-          </View>
-
-          {/* Поле Повтор пароля */}
-          <View style={styles.inputWrapper}>
-            <Ionicons name="shield-checkmark-outline" size={20} color={Colors.primary} style={styles.icon} />
-            <TextInput 
-              placeholder="Повторите пароль" 
-              placeholderTextColor="#94A3B8" 
-              style={styles.input} 
-              secureTextEntry 
-            />
-          </View>
-
-          <TouchableOpacity 
-            style={[styles.mainBtn, loading && { opacity: 0.7 }]} 
-            onPress={handleSendSMS}
+          <TouchableOpacity
+            style={[styles.mainBtn, loading && { opacity: 0.7 }]}
+            onPress={handleRegister}
             disabled={loading}
           >
-            <Text style={styles.mainBtnText}>
-              {loading ? "Отправка..." : "Получить код по SMS"}
-            </Text>
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.mainBtnText}>Зарегистрироваться</Text>
+            )}
           </TouchableOpacity>
+
+          <Text style={styles.termsText}>
+            Нажимая кнопку, вы подтверждаете согласие с{' '}
+            <Text style={styles.linkText}>Условиями использования</Text>
+          </Text>
 
           <View style={styles.footerLinkWrapper}>
             <Text style={styles.footerText}>Уже есть аккаунт? </Text>
@@ -132,8 +114,7 @@ export default function Register() {
               <Text style={styles.linkText}>Войти</Text>
             </TouchableOpacity>
           </View>
-
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -141,80 +122,28 @@ export default function Register() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
-  flex: { flex: 1 },
-  content: { padding: 25, justifyContent: 'center', flex: 1 },
-  headerTitle: { 
-    fontSize: 32, 
-    fontWeight: '800', 
-    color: Colors.primary, 
-    marginBottom: 40,
-    textAlign: 'left'
+  content: { padding: 25, flexGrow: 1, justifyContent: 'center' },
+  logoText: { fontSize: 36, fontWeight: '900', color: Colors.primary, textAlign: 'center', marginBottom: 5 },
+  subTitle: { fontSize: 18, color: '#1E293B', textAlign: 'center', marginBottom: 40, fontWeight: '600' },
+  inputLabelGroup: { marginBottom: 20 },
+  label: { fontSize: 14, fontWeight: '700', color: '#64748B', marginBottom: 8, marginLeft: 5 },
+  input: {
+    backgroundColor: '#F8FAFC', borderRadius: 16, paddingHorizontal: 20,
+    height: 60, fontSize: 16, color: '#1E293B', borderWidth: 1, borderColor: '#F1F5F9',
   },
   inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 16,
-    paddingHorizontal: 15,
-    height: 60,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC',
+    borderRadius: 16, paddingHorizontal: 15, height: 60,
+    borderWidth: 1, borderColor: '#F1F5F9',
   },
-  icon: { marginRight: 10 },
-  input: { 
-    flex: 1, 
-    fontSize: 16, 
-    color: '#1E293B',
-    height: '100%' 
-  },
-  uzbPrefix: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRightWidth: 1,
-    borderRightColor: '#CBD5E1',
-    paddingRight: 10,
-    marginRight: 5,
-    gap: 5
-  },
+  uzbPrefix: { flexDirection: 'row', alignItems: 'center', borderRightWidth: 1, borderRightColor: '#CBD5E1', paddingRight: 10, marginRight: 10, gap: 5 },
   flag: { fontSize: 18 },
-  prefixText: { 
-    fontSize: 16, 
-    fontWeight: '600', 
-    color: '#1E293B' 
-  },
-  mainBtn: {
-    backgroundColor: Colors.primary,
-    height: 60,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 20,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5
-  },
-  mainBtnText: { 
-    color: '#FFFFFF', 
-    fontSize: 16, 
-    fontWeight: '700' 
-  },
-  footerLinkWrapper: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 25,
-    gap: 5,
-  },
-  footerText: {
-    fontSize: 15,
-    color: '#64748B',
-  },
-  linkText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: Colors.primary,
-  },
+  prefixText: { fontSize: 16, fontWeight: '600', color: '#1E293B' },
+  phoneInput: { flex: 1, fontSize: 16, color: '#1E293B' },
+  mainBtn: { backgroundColor: Colors.primary, height: 60, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginTop: 10 },
+  mainBtnText: { color: '#FFFFFF', fontSize: 18, fontWeight: '700' },
+  termsText: { fontSize: 12, color: '#94A3B8', textAlign: 'center', marginTop: 20, lineHeight: 18 },
+  footerLinkWrapper: { flexDirection: 'row', justifyContent: 'center', marginTop: 25 },
+  footerText: { fontSize: 14, color: '#64748B' },
+  linkText: { fontSize: 14, fontWeight: '700', color: Colors.primary },
 });

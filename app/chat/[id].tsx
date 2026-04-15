@@ -89,8 +89,6 @@ export default function ChatDetailScreen() {
                 <RentalRequestCard
                     booking={booking}
                     isOwner={booking.ownerId === CURRENT_USER_ID}
-                    onAccept={() => handleAcceptRequest(item.bookingId!)}
-                    onDecline={() => handleDeclineRequest(item.bookingId!)}
                 />
             );
         }

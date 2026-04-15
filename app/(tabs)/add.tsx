@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     Image,
     KeyboardAvoidingView,
@@ -16,8 +17,11 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import SizeSelectorMultiple from '../../components/listing/SizeSelectorMultiple';
 import { Colors } from '../../constants/Colors';
 import { CATEGORIES as DATA_CATEGORIES } from '../../constants/data';
+import { ALL_CLOTHING_SIZES, CLOTHING_CATEGORIES } from '../../constants/sizes';
+import * as listingService from '../../services/listingService';
 
 const CATEGORIES = DATA_CATEGORIES.filter(c => c.id !== 'all');
 
@@ -28,6 +32,16 @@ export default function AddProductScreen() {
     const [description, setDescription] = useState('');
     const [price, setPrice] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    // Dynamic states based on category
+    const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+    const [quantity, setQuantity] = useState('1');
+    const [unit, setUnit] = useState('шт');
+
+    const isSizeCategory = useMemo(() =>
+        CLOTHING_CATEGORIES.includes(selectedCategory),
+        [selectedCategory]);
 
     const pickImage = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
@@ -46,7 +60,7 @@ export default function AddProductScreen() {
         setImages(prev => prev.filter((_, i) => i !== index));
     };
 
-    const handlePublish = () => {
+    const handlePublish = async () => {
         if (images.length === 0) {
             Alert.alert('Нет фото', 'Добавьте хотя бы одну фотографию вещи.');
             return;
@@ -56,11 +70,36 @@ export default function AddProductScreen() {
             return;
         }
 
-        Alert.alert(
-            'Готово!',
-            'Ваше объявление отправлено на модерацию. Обычно это занимает не более часа.',
-            [{ text: 'Отлично', onPress: () => router.replace('/(tabs)') }]
-        );
+        if (isSizeCategory && selectedSizes.length === 0) {
+            Alert.alert('Нет размеров', 'Выберите хотя бы один размер.');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await listingService.createListing({
+                title,
+                description,
+                priceNum: parseInt(price),
+                category: selectedCategory,
+                categoryType: isSizeCategory ? 'size' : 'quantity',
+                availableSizes: isSizeCategory ? selectedSizes : [],
+                maxQuantity: isSizeCategory ? 1 : parseInt(quantity),
+                unit: isSizeCategory ? 'шт' : unit,
+                image: { uri: images[0] }, // Using first image as main
+                location: 'Ташкент',
+            });
+
+            Alert.alert(
+                'Готово!',
+                'Ваше объявление опубликовано.',
+                [{ text: 'Отлично', onPress: () => router.replace('/(tabs)') }]
+            );
+        } catch (error) {
+            Alert.alert('Ошибка', 'Не удалось опубликовать объявление.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -75,7 +114,6 @@ export default function AddProductScreen() {
                 </View>
 
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-                    {/* СЕКЦИЯ ФОТО */}
                     <Text style={styles.sectionTitle}>Фотографии</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoList}>
                         <TouchableOpacity style={styles.addPhotoBtn} onPress={pickImage}>
@@ -98,19 +136,17 @@ export default function AddProductScreen() {
 
                     <View style={styles.divider} />
 
-                    {/* НАЗВАНИЕ */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Название объявления</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder="Например: Дрель Bosch GSR 120-LI"
+                            placeholder="Например: Свадебное платье"
                             placeholderTextColor="#94A3B8"
                             value={title}
                             onChangeText={setTitle}
                         />
                     </View>
 
-                    {/* КАТЕГОРИИ */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Категория</Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catList}>
@@ -137,7 +173,49 @@ export default function AddProductScreen() {
                         </ScrollView>
                     </View>
 
-                    {/* ЦЕНА */}
+                    {/* DYNAMIC PARAMETERS STEP */}
+                    {selectedCategory !== '' && (
+                        <View style={styles.inputGroup}>
+                            {isSizeCategory ? (
+                                <View>
+                                    <View style={styles.labelRow}>
+                                        <Text style={styles.label}>Доступные размеры</Text>
+                                        <Text style={styles.hint}>Выберите все что есть</Text>
+                                    </View>
+                                    <SizeSelectorMultiple
+                                        allSizes={ALL_CLOTHING_SIZES}
+                                        selectedSizes={selectedSizes}
+                                        onToggle={(size) => setSelectedSizes(prev =>
+                                            prev.includes(size) ? prev.filter(s => s !== size) : [...prev, size]
+                                        )}
+                                    />
+                                </View>
+                            ) : (
+                                <View style={styles.row}>
+                                    <View style={{ flex: 2 }}>
+                                        <Text style={styles.label}>Количество</Text>
+                                        <TextInput
+                                            style={styles.input}
+                                            value={quantity}
+                                            onChangeText={setQuantity}
+                                            keyboardType="numeric"
+                                            placeholder="1"
+                                        />
+                                    </View>
+                                    <View style={{ flex: 1, marginLeft: 10 }}>
+                                        <Text style={styles.label}>Ед. изм.</Text>
+                                        <TextInput
+                                            style={styles.input}
+                                            value={unit}
+                                            onChangeText={setUnit}
+                                            placeholder="шт"
+                                        />
+                                    </View>
+                                </View>
+                            )}
+                        </View>
+                    )}
+
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Цена аренды за день (сум)</Text>
                         <View style={styles.priceInputWrapper}>
@@ -153,12 +231,11 @@ export default function AddProductScreen() {
                         </View>
                     </View>
 
-                    {/* ОПИСАНИЕ */}
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Описание</Text>
                         <TextInput
                             style={[styles.input, styles.textArea]}
-                            placeholder="Расскажите о состоянии вещи, комплектации и правилах использования..."
+                            placeholder="Расскажите о состоянии вещи..."
                             placeholderTextColor="#94A3B8"
                             multiline
                             numberOfLines={4}
@@ -173,10 +250,15 @@ export default function AddProductScreen() {
 
                 <View style={styles.bottomBar}>
                     <TouchableOpacity
-                        style={styles.publishBtn}
+                        style={[styles.publishBtn, loading && { opacity: 0.7 }]}
                         onPress={handlePublish}
+                        disabled={loading}
                     >
-                        <Text style={styles.publishBtnText}>Опубликовать</Text>
+                        {loading ? (
+                            <ActivityIndicator color="#fff" />
+                        ) : (
+                            <Text style={styles.publishBtnText}>Опубликовать</Text>
+                        )}
                     </TouchableOpacity>
                 </View>
             </KeyboardAvoidingView>
@@ -206,6 +288,9 @@ const styles = StyleSheet.create({
 
     inputGroup: { marginBottom: 20 },
     label: { fontSize: 14, fontWeight: '700', color: Colors.text, marginBottom: 8 },
+    labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+    hint: { fontSize: 12, color: '#94A3B8' },
+    row: { flexDirection: 'row', alignItems: 'center' },
     input: {
         backgroundColor: '#F8FAFC', borderRadius: 16, padding: 15,
         fontSize: 16, color: Colors.text, borderWidth: 1, borderColor: '#F1F5F9'

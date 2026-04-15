@@ -1,20 +1,24 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import * as authService from '../services/authService';
+import { User } from '../types/user.types';
 
 interface AuthContextType {
     isLoggedIn: boolean;
-    login: () => Promise<void>;
+    user: User | null;
+    login: (phone: string, otp: string) => Promise<void>;
     logout: () => Promise<void>;
     loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const AUTH_STORAGE_KEY = 'ijarachi_auth_session';
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const AUTH_TOKEN_KEY = 'ijarachi_access_token';
+const AUTH_USER_KEY = 'ijarachi_user_data';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -23,18 +27,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const checkAuth = async () => {
         try {
-            const session = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
-            if (session) {
-                const { timestamp } = JSON.parse(session);
-                const now = Date.now();
+            const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+            const userData = await AsyncStorage.getItem(AUTH_USER_KEY);
 
-                // ЛОГИКА ДЛЯ ТЕСТА: Забывать через 24 часа
-                if (now - timestamp > ONE_DAY_MS) {
-                    console.log('[Auth] Session expired (24h test logic)');
-                    await logout();
-                } else {
-                    setIsLoggedIn(true);
-                }
+            if (token && userData) {
+                setUser(JSON.parse(userData));
+                setIsLoggedIn(true);
             }
         } catch (e) {
             console.error('Failed to load auth session', e);
@@ -43,19 +41,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
-    const login = async () => {
-        const session = { timestamp: Date.now() };
-        await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+    const login = async (phone: string, otp: string) => {
+        const { user: userData, token } = await authService.verifyOTP(phone, otp);
+        await AsyncStorage.setItem(AUTH_TOKEN_KEY, token);
+        await AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(userData));
+        setUser(userData);
         setIsLoggedIn(true);
     };
 
     const logout = async () => {
-        await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+        await authService.logout();
+        await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+        await AsyncStorage.removeItem(AUTH_USER_KEY);
+        setUser(null);
         setIsLoggedIn(false);
     };
 
     return (
-        <AuthContext.Provider value={{ isLoggedIn, login, logout, loading }}>
+        <AuthContext.Provider value={{ isLoggedIn, user, login, logout, loading }}>
             {children}
         </AuthContext.Provider>
     );

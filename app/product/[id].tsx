@@ -1,13 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useMemo, useState } from 'react';
-import { Alert, Dimensions, Image, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, Platform } from 'react-native'; // ПРАВИЛЬНЫЙ ИМПОРТ ТУТ
+import React, { useEffect, useMemo, useState } from 'react';
+import { Alert, Dimensions, Image, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { SellerCard } from '../../components/SellerCard';
+import QuantitySelector from '../../components/listing/QuantitySelector';
+import SizeSelector from '../../components/listing/SizeSelector';
 import { Colors } from '../../constants/Colors';
 import { ITEMS } from '../../constants/data';
+import { useAuth } from '../../context/AuthContext';
+import { Listing } from '../../types/listing.types';
 
-// УМНЫЙ ИМПОРТ ДЛЯ ПРЕДОТВРАЩЕНИЯ ОШИБКИ В ВЕБЕ
 let DateTimePicker: any;
 if (Platform.OS !== 'web') {
     DateTimePicker = require('@react-native-community/datetimepicker').default;
@@ -18,41 +21,41 @@ const { width } = Dimensions.get('window');
 export default function ProductDetail() {
     const router = useRouter();
     const { id } = useLocalSearchParams();
-    const product = ITEMS.find(p => p.id === id) || ITEMS[0];
-    const priceNum = parseInt(product.price.replace(/[^0-9]/g, ''));
+    const { isLoggedIn } = useAuth();
 
-    const isAuthenticated = false; // Временная переменная (потом возьмем из глобального стейта)
+    const product = (ITEMS.find(p => p.id === id) || ITEMS[0]) as Listing;
+    const priceNum = product.priceNum;
 
-    // Для запрета прошедших дней
     const today = new Date().toISOString().split('T')[0];
 
-    // Состояние для количества (по умолчанию 1)
+    const [selectedSize, setSelectedSize] = useState<string | null>(null);
     const [quantity, setQuantity] = useState(1);
     const [range, setRange] = useState({ start: '', end: '', markedDates: {} });
 
-    // СОСТОЯНИЯ ДЛЯ ВРЕМЕНИ (IPHONE STYLE)
     const [startTime, setStartTime] = useState(new Date(new Date().setHours(14, 46, 0, 0)));
     const [endTime, setEndTime] = useState(new Date(new Date().setHours(20, 0, 0, 0)));
     const [showStartPicker, setShowStartPicker] = useState(false);
     const [showEndPicker, setShowEndPicker] = useState(false);
 
+    const isSizeCategory = product.categoryType === 'size';
+
     const formatTime = (date: Date) => {
         return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
     };
 
-    // const handleBooking = () => {
-    //   if (!isAuthenticated) {
-    //     // Если не залогинен — летим на страницу входа
-    //     router.push('/auth/login');
-    //   } else {
-    //     // Если залогинен — открываем экран успеха или оплаты
-    //     alert(`Забронировано на ${daysCount} дн.!`);
-    //   }
-    // };
-
     const handleBooking = () => {
+        if (!isLoggedIn) {
+            router.push('/auth/login');
+            return;
+        }
+
         if (!range.start) {
             Alert.alert("Дата не выбрана", "Выберите хотя бы один день на календаре.");
+            return;
+        }
+
+        if (isSizeCategory && !selectedSize) {
+            Alert.alert('Размер не выбран', 'Пожалуйста, выберите размер.');
             return;
         }
 
@@ -60,27 +63,50 @@ export default function ProductDetail() {
             pathname: '/checkout/Summary',
             params: {
                 id: id,
-                days: daysCount, // Если даты одинаковые, daysCount будет 1
-                qty: quantity,   // Передаем выбранное количество
+                days: daysCount,
+                qty: isSizeCategory ? 1 : quantity,
+                size: isSizeCategory ? selectedSize : null,
                 startDate: range.start,
                 endDate: range.end,
-                // ПЕРЕДАЕМ ВРЕМЯ В SUMMARY
                 startTime: range.start === range.end ? formatTime(startTime) : null,
                 endTime: range.start === range.end ? formatTime(endTime) : null,
             }
         });
     };
 
+    const blockedDatesObj = useMemo(() => {
+        const obj: any = {};
+        (product.blockedDates || []).forEach(date => {
+            obj[date] = {
+                disabled: true,
+                disableTouchEvent: true,
+                textColor: '#CBD5E1',
+            };
+        });
+        return obj;
+    }, [product.blockedDates]);
+
+    useEffect(() => {
+        if (product.blockedDates) {
+            setRange(prev => ({
+                ...prev,
+                markedDates: { ...prev.markedDates, ...blockedDatesObj }
+            }));
+        }
+    }, [blockedDatesObj]);
+
     const handleDayPress = (day: any) => {
         const dateStr = day.dateString;
 
-        // Если ничего не выбрано ИЛИ уже был выбран законченный диапазон — начинаем новый выбор
-        // (Добавили проверку: если start и end равны, значит это был только первый клик)
+        // Если дата заблокирована - ничего не делаем
+        if (product.blockedDates?.includes(dateStr)) return;
+
         if (!range.start || (range.start !== range.end)) {
             setRange({
                 start: dateStr,
-                end: dateStr, // Ставим временно ту же дату
+                end: dateStr,
                 markedDates: {
+                    ...blockedDatesObj,
                     [dateStr]: {
                         startingDay: true,
                         endingDay: true,
@@ -90,15 +116,42 @@ export default function ProductDetail() {
                 }
             });
         }
-        // Если уже есть точка старта, и мы кликаем второй раз — рисуем диапазон
         else {
             let start = new Date(range.start);
             let end = new Date(dateStr);
 
-            // Если кликнули на дату раньше начала — меняем их местами
             if (end < start) [start, end] = [end, start];
 
-            let newMarkedDates: any = {};
+            // Проверка: есть ли заблокированные даты внутри выбранного диапазона
+            let checkDate = new Date(start);
+            let hasBlocked = false;
+            while (checkDate <= end) {
+                if (product.blockedDates?.includes(checkDate.toISOString().split('T')[0])) {
+                    hasBlocked = true;
+                    break;
+                }
+                checkDate.setDate(checkDate.getDate() + 1);
+            }
+
+            if (hasBlocked) {
+                // Если есть заблокированные даты, сбрасываем выбор на текущую дату
+                setRange({
+                    start: dateStr,
+                    end: dateStr,
+                    markedDates: {
+                        ...blockedDatesObj,
+                        [dateStr]: {
+                            startingDay: true,
+                            endingDay: true,
+                            color: Colors.primary,
+                            textColor: 'white'
+                        }
+                    }
+                });
+                return;
+            }
+
+            let newMarkedDates: any = { ...blockedDatesObj };
             let currentDate = new Date(start);
 
             while (currentDate <= end) {
@@ -123,27 +176,8 @@ export default function ProductDetail() {
         }
     };
 
-    // const handleDayPress = (day: any) => {
-    //   const dateStr = day.dateString;
-    //   if (!range.start || (range.start && range.end)) {
-    //     setRange({ start: dateStr, end: '', markedDates: { [dateStr]: { startingDay: true, color: Colors.primary, textColor: 'white', endingDay: true } } });
-    //   } else {
-    //     let start = new Date(range.start); let end = new Date(dateStr);
-    //     if (end < start) [start, end] = [end, start];
-    //     let newMarkedDates: any = {}; let currentDate = new Date(start);
-    //     while (currentDate <= end) {
-    //       const fmt = currentDate.toISOString().split('T')[0];
-    //       newMarkedDates[fmt] = { color: Colors.primary, textColor: 'white', startingDay: fmt === start.toISOString().split('T')[0], endingDay: fmt === end.toISOString().split('T')[0] };
-    //       currentDate.setDate(currentDate.getDate() + 1);
-    //     }
-    //     setRange({ start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0], markedDates: newMarkedDates });
-    //   }
-    // };
-
     const daysCount = useMemo(() => Object.keys(range.markedDates).length || 1, [range.markedDates]);
-
-    // Итоговая цена с учетом количества и дней
-    const totalAmount = daysCount * priceNum * quantity;
+    const totalAmount = daysCount * priceNum * (isSizeCategory ? 1 : quantity);
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
@@ -158,65 +192,37 @@ export default function ProductDetail() {
 
                     <View style={styles.divider} />
 
-                    {/* Блок выбора количества (показываем только если мебели/посуды много) */}
-                    {(product as any).maxQuantity > 1 && (
-                        <View style={styles.quantitySection}>
-                            <View>
-                                <Text style={styles.sectionTitle}>Количество</Text>
-                                <Text style={styles.stockText}>В наличии: {(product as any).maxQuantity} шт.</Text>
-                            </View>
-                            <View style={styles.stepper}>
-                                {/* Кнопка Минус */}
-                                <TouchableOpacity
-                                    style={styles.stepBtn}
-                                    onPress={() => setQuantity(Math.max(1, quantity - 1))}
-                                >
-                                    <Ionicons name="remove" size={24} color={Colors.text} />
-                                </TouchableOpacity>
-
-                                {/* ВВОД ВРУЧНУЮ */}
-                                <TextInput
-                                    style={styles.quantityInput}
-                                    keyboardType="number-pad"
-                                    value={String(quantity)}
-                                    onChangeText={(text) => {
-                                        const val = parseInt(text.replace(/[^0-9]/g, '')) || 0;
-                                        // Если ввел больше чем есть, ставим максимум
-                                        if (val > (product as any).maxQuantity) {
-                                            setQuantity((product as any).maxQuantity);
-                                        } else {
-                                            setQuantity(val);
-                                        }
-                                    }}
-                                    onBlur={() => {
-                                        // Если оставил поле пустым, возвращаем 1
-                                        if (quantity < 1) setQuantity(1);
-                                    }}
-                                    selectTextOnFocus={true} 
-                                />
-                                {/* Кнопка Плюс */}
-                                <TouchableOpacity
-                                    style={styles.stepBtn}
-                                    onPress={() => setQuantity(Math.min((product as any).maxQuantity, quantity + 1))}
-                                >
-                                    <Ionicons name="add" size={24} color={Colors.text} />
-                                </TouchableOpacity>
-                            </View>
-                        </View>
+                    {/* SELECTORS Section */}
+                    {isSizeCategory ? (
+                        <SizeSelector
+                            availableSizes={product.availableSizes || []}
+                            selectedSize={selectedSize}
+                            onSelect={setSelectedSize}
+                        />
+                    ) : (
+                        <QuantitySelector
+                            value={quantity}
+                            max={product.maxQuantity || 1}
+                            onChange={setQuantity}
+                            unit={product.unit || 'шт'}
+                        />
                     )}
 
-                    {(product as any).maxQuantity > 1 && <View style={styles.divider} />}
+                    <View style={styles.divider} />
 
                     <Text style={styles.sectionTitle}>Описание</Text>
                     <Text style={styles.description}>{product.description}</Text>
 
                     <View style={styles.divider} />
                     <Text style={styles.sectionTitle}>Владелец</Text>
-                    <SellerCard sellerName={(product as any).seller.name} sellerRole={(product as any).seller.role} />
+                    <SellerCard
+                        sellerName={product.seller.name}
+                        sellerRole={product.seller.role}
+                        onPress={() => router.push(`/seller/${product.seller.id}` as any)}
+                    />
 
                     <View style={styles.divider} />
 
-                    {/* КАРТОЧКИ ВЫБОРА ДАТЫ */}
                     <Text style={styles.sectionTitle}>Период аренды</Text>
                     <View style={styles.dateTimeRow}>
                         <View style={styles.dateTimeCard}>
@@ -230,12 +236,11 @@ export default function ProductDetail() {
                         </View>
                     </View>
 
-                    {/* ВЫБОР ВРЕМЕНИ (IPHONE STYLE) */}
                     {range.start && range.start === range.end && (
                         <View style={styles.timeSection}>
                             <Text style={styles.sectionTitleSmall}>Укажите часы аренды</Text>
                             <View style={styles.dateTimeRow}>
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                     style={[styles.dateTimeCard, styles.timePickerCardActive]}
                                     onPress={() => Platform.OS !== 'web' && setShowStartPicker(true)}
                                 >
@@ -245,7 +250,7 @@ export default function ProductDetail() {
 
                                 <Ionicons name="time-outline" size={20} color={Colors.primary} />
 
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                     style={[styles.dateTimeCard, styles.timePickerCardActive]}
                                     onPress={() => Platform.OS !== 'web' && setShowEndPicker(true)}
                                 >
@@ -256,14 +261,13 @@ export default function ProductDetail() {
                         </View>
                     )}
 
-                    {/* ПИКЕРЫ (ТОЛЬКО ДЛЯ МОБИЛОК) */}
                     {Platform.OS !== 'web' && (showStartPicker || showEndPicker) && (
                         <DateTimePicker
                             value={showStartPicker ? startTime : endTime}
                             mode="time"
                             is24Hour={true}
                             display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                            textColor="#000000" // Делаем числа черными в карусели
+                            textColor="#000000"
                             onChange={(event: any, date: any) => {
                                 setShowStartPicker(false);
                                 setShowEndPicker(false);
@@ -277,15 +281,14 @@ export default function ProductDetail() {
                     <Text style={styles.sectionTitle}>Выберите даты</Text>
                     <View style={styles.calendarWrapper}>
                         <Calendar
-                            markingType={'period'} 
-                            onDayPress={handleDayPress} 
+                            markingType={'period'}
+                            onDayPress={handleDayPress}
                             markedDates={range.markedDates}
-                            minDate={today} // ЗАПРЕТ ПРОШЕДШИХ ДНЕЙ ТУТ
+                            minDate={today}
                             theme={{ selectedDayBackgroundColor: Colors.primary, todayTextColor: Colors.primary, ...({ 'stylesheet.calendar.header': { week: { marginTop: 5, flexDirection: 'row', justifyContent: 'space-between' } } } as any) }}
                         />
                     </View>
 
-                    {/* Инфо о диапазоне (несколько дней) */}
                     {range.start && range.end && range.start !== range.end && (
                         <View style={styles.rangeInfoBox}>
                             <Ionicons name="information-circle-outline" size={20} color={Colors.primary} />
@@ -299,7 +302,7 @@ export default function ProductDetail() {
 
             <View style={styles.bottomBar}>
                 <View>
-                    <Text style={styles.totalLabel}>Итого за {daysCount} дн. {quantity > 1 ? `(${quantity} шт.)` : ''}</Text>
+                    <Text style={styles.totalLabel}>Итого за {daysCount} дн. {!isSizeCategory && quantity > 1 ? `(${quantity} шт.)` : ''}</Text>
                     <Text style={styles.totalPrice}>{totalAmount.toLocaleString()} сум</Text>
                 </View>
                 <TouchableOpacity style={[styles.bookBtn, (!range.start) && { opacity: 0.5 }]}
@@ -328,41 +331,41 @@ const styles = StyleSheet.create({
 
     // Стили для карточек даты/времени
     dateTimeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 15 },
-    dateTimeCard: { 
-        flex: 1, 
-        backgroundColor: '#F8FAFC', 
-        padding: 12, 
-        borderRadius: 18, 
-        borderWidth: 1, 
-        borderColor: '#F1F5F9', 
+    dateTimeCard: {
+        flex: 1,
+        backgroundColor: '#F8FAFC',
+        padding: 12,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
         alignItems: 'center',
         justifyContent: 'center',
         minHeight: 65
     },
-    dateTimeLabelSmall: { 
-        fontSize: 10, 
-        color: '#64748B', 
-        fontWeight: '800', 
-        textTransform: 'uppercase', 
-        marginBottom: 4 
+    dateTimeLabelSmall: {
+        fontSize: 10,
+        color: '#64748B',
+        fontWeight: '800',
+        textTransform: 'uppercase',
+        marginBottom: 4
     },
-    dateTimeValue: { 
-        fontSize: 16, 
-        fontWeight: '900', 
+    dateTimeValue: {
+        fontSize: 16,
+        fontWeight: '900',
         color: '#000000', // Темный цвет для четкости
     },
-    
+
     // Специфические стили для активных карточек времени (синих)
     timeSection: { marginTop: 10, marginBottom: 20 },
     sectionTitleSmall: { fontSize: 14, fontWeight: '700', color: '#000000', marginBottom: 10 },
     timePickerCardActive: {
-        backgroundColor: '#F0F9FF', 
+        backgroundColor: '#F0F9FF',
         borderColor: '#BAE6FD',
     },
-    timeValue: { 
-        fontSize: 18, 
-        fontWeight: '900', 
-        color: '#0369A1' 
+    timeValue: {
+        fontSize: 18,
+        fontWeight: '900',
+        color: '#0369A1'
     },
     timeLabelBlue: {
         color: '#0369A1',
@@ -375,25 +378,25 @@ const styles = StyleSheet.create({
     // Стили для Stepper
     quantitySection: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     stockText: { fontSize: 12, color: '#94A3B8', marginTop: -5 },
-    quantityInput: { 
-        fontSize: 18, 
-        fontWeight: '800', 
+    quantityInput: {
+        fontSize: 18,
+        fontWeight: '800',
         color: '#000000',
         width: 60,
         textAlign: 'center',
-        padding: 0 
-      },
-      stepper: { 
-        flexDirection: 'row', 
-        alignItems: 'center', 
-        backgroundColor: '#F8FAFC', 
-        borderRadius: 15, 
-        padding: 5, 
-        borderWidth: 1, 
-        borderColor: '#F1F5F9' 
-      },
+        padding: 0
+    },
+    stepper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F8FAFC',
+        borderRadius: 15,
+        padding: 5,
+        borderWidth: 1,
+        borderColor: '#F1F5F9'
+    },
     stepBtn: { width: 38, height: 38, backgroundColor: '#FFFFFF', borderRadius: 10, justifyContent: 'center', alignItems: 'center', elevation: 2 },
-    
+
     rangeInfoBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0F9FF', padding: 15, borderRadius: 15, marginTop: 15, gap: 10 },
     rangeText: { fontSize: 13, color: '#0369A1', fontWeight: '500' },
 });

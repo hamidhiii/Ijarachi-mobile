@@ -3,26 +3,26 @@ import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/Colors';
 
-export const SellerCard = ({ sellerName, sellerRole }: any) => {
+export const SellerCard = ({ sellerName, sellerRole, onPress }: any) => {
   return (
-    <View style={styles.card}>
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       {/* Аватарка */}
-      <Image 
-        source={{ uri: 'https://cdn-icons-png.flaticon.com/512/147/147144.png' }} 
-        style={styles.avatar} 
+      <Image
+        source={{ uri: 'https://cdn-icons-png.flaticon.com/512/147/147144.png' }}
+        style={styles.avatar}
       />
-      
+
       <View style={styles.info}>
         <Text style={styles.badge}>ВЛАДЕЛЕЦ ВЕЩИ</Text>
         <Text style={styles.name}>{sellerName}</Text>
         <Text style={styles.role}>{sellerRole}</Text>
       </View>
 
-      <TouchableOpacity style={styles.viewProfile}>
+      <View style={styles.viewProfile}>
         <Text style={styles.linkText}>Профиль</Text>
-        <Ionicons name="chevron-forward" size={16} color="#6B7280   " />
-      </TouchableOpacity>
-    </View>
+        <Ionicons name="chevron-forward" size={16} color="#6B7280" />
+      </View>
+    </TouchableOpacity>
   );
 };
 

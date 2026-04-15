@@ -1,17 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { Booking } from '../../types/rental.types';
 
 interface RentalRequestCardProps {
     booking: Booking;
-    onAccept: () => void;
-    onDecline: () => void;
     isOwner: boolean;
 }
 
-export default function RentalRequestCard({ booking, onAccept, onDecline, isOwner }: RentalRequestCardProps) {
+export default function RentalRequestCard({ booking, isOwner }: RentalRequestCardProps) {
     return (
         <View style={styles.card}>
             <View style={styles.header}>
@@ -42,22 +40,13 @@ export default function RentalRequestCard({ booking, onAccept, onDecline, isOwne
                 </View>
             </View>
 
-            {isOwner && booking.status === 'pending_handover' && (
-                <View style={styles.actions}>
-                    <TouchableOpacity style={[styles.btn, styles.declineBtn]} onPress={onDecline}>
-                        <Text style={styles.declineText}>Не могу</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.btn, styles.acceptBtn]} onPress={onAccept}>
-                        <Text style={styles.acceptText}>Могу выдать</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
-
-            {!isOwner && (
-                <View style={styles.statusBox}>
-                    <Text style={styles.statusText}>Запрос отправлен. Ожидайте ответа владельца.</Text>
-                </View>
-            )}
+            <View style={styles.statusBox}>
+                <Text style={styles.statusText}>
+                    {isOwner
+                        ? 'Вы получили новый запрос на аренду. Вещь забронирована.'
+                        : 'Запрос отправлен. Вещь забронирована за вами.'}
+                </Text>
+            </View>
         </View>
     );
 }

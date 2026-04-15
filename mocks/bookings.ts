@@ -39,7 +39,7 @@ export const MOCK_BOOKINGS: Booking[] = [
         endDate: '2026-04-09',
         totalDays: 2,
         totalAmount: 1000000,
-        status: 'active',
+        status: 'pending_handover',
         ownerHandoverPhotos: [],
         renterHandoverPhotos: [],
         renterReturnPhotos: [],

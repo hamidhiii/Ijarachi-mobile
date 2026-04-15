@@ -12,11 +12,10 @@ import {
   View,
 } from 'react-native';
 import { Colors } from '../../constants/Colors';
-import { CURRENT_USER_ID } from '../../mocks/bookings';
+import { useAuth } from '../../context/AuthContext';
 import { getBookings } from '../../services/rentalService';
 import { Booking, BookingStatus, UserRole } from '../../types/rental.types';
 
-// ─── Метаданные статусов ──────────────────────────────────────────────────────
 const STATUS_META: Record<BookingStatus, { label: string; color: string; bg: string; icon: string }> = {
   pending_payment: { label: 'Ожидает оплаты', color: '#D97706', bg: '#FFFBEB', icon: 'card-outline' },
   pending_handover: { label: 'Передача вещи', color: '#2563EB', bg: '#EFF6FF', icon: 'hand-right-outline' },
@@ -30,7 +29,6 @@ const STATUS_META: Record<BookingStatus, { label: string; color: string; bg: str
   cancelled: { label: 'Отменено', color: '#94A3B8', bg: '#F8FAFC', icon: 'close-circle-outline' },
 };
 
-// ─── Кнопка действия по статусу ──────────────────────────────────────────────
 function useActionButton(booking: Booking, myRole: UserRole) {
   const router = useRouter();
   switch (booking.status) {
@@ -57,9 +55,8 @@ function useActionButton(booking: Booking, myRole: UserRole) {
   }
 }
 
-// ─── Карточка чека ────────────────────────────────────────────────────────────
-function ReceiptCard({ booking }: { booking: Booking }) {
-  const myRole: UserRole = booking.ownerId === CURRENT_USER_ID ? 'owner' : 'renter';
+function ReceiptCard({ booking, currentUserId }: { booking: Booking; currentUserId: string }) {
+  const myRole: UserRole = booking.ownerId === currentUserId ? 'owner' : 'renter';
   const meta = STATUS_META[booking.status];
   const action = useActionButton(booking, myRole);
 
@@ -128,7 +125,6 @@ const cardStyles = StyleSheet.create({
   actionText: { color: '#fff', fontSize: 12, fontWeight: '700' },
 });
 
-// ─── Пункт меню ──────────────────────────────────────────────────────────────
 function MenuItem({ icon, label, onPress }: { icon: string; label: string; onPress?: () => void }) {
   return (
     <TouchableOpacity style={menuItemStyles.item} onPress={onPress} activeOpacity={0.7}>
@@ -155,23 +151,36 @@ const menuItemStyles = StyleSheet.create({
   label: { flex: 1, fontSize: 15, color: Colors.text, fontWeight: '500' },
 });
 
-// ─── Главный экран профиля ────────────────────────────────────────────────────
 type ReceiptTab = 'renting' | 'lending';
 
 export default function ProfileScreen() {
+  const router = useRouter();
+  const { user, isLoggedIn } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loadingBookings, setLoadingBookings] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [tab, setTab] = useState<ReceiptTab>('renting');
 
   const loadBookings = useCallback(async () => {
-    const data = await getBookings(CURRENT_USER_ID);
-    setBookings(data);
-    setLoadingBookings(false);
-    setRefreshing(false);
-  }, []);
+    if (!user) return;
+    try {
+      const data = await getBookings(user.id);
+      setBookings(data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingBookings(false);
+      setRefreshing(false);
+    }
+  }, [user]);
 
-  useEffect(() => { loadBookings(); }, [loadBookings]);
+  useEffect(() => {
+    if (isLoggedIn) loadBookings();
+    else {
+      setBookings([]);
+      setLoadingBookings(false);
+    }
+  }, [loadBookings, isLoggedIn]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -180,9 +189,27 @@ export default function ProfileScreen() {
 
   const filtered = bookings.filter((b) =>
     tab === 'renting'
-      ? b.renterId === CURRENT_USER_ID
-      : b.ownerId === CURRENT_USER_ID
+      ? b.renterId === user?.id
+      : b.ownerId === user?.id
   );
+
+  if (!isLoggedIn) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.authPlaceholder}>
+          <Ionicons name="person-circle-outline" size={100} color="#CBD5E1" />
+          <Text style={styles.authTitle}>Личный кабинет</Text>
+          <Text style={styles.authSub}>Войдите, чтобы управлять вашими арендами и объявлениями</Text>
+          <TouchableOpacity
+            style={styles.loginBtn}
+            onPress={() => router.push('/auth/login')}
+          >
+            <Text style={styles.loginBtnText}>Войти / Регистрация</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -197,39 +224,65 @@ export default function ProfileScreen() {
           <View style={styles.avatar}>
             <Ionicons name="person" size={36} color="#fff" />
           </View>
-          <Text style={styles.userName}>Хамидулло</Text>
-          <Text style={styles.userRole}>Арендатор · Ташкент</Text>
+          <Text style={styles.userName}>{user?.name}</Text>
+          <Text style={styles.userRole}>{user?.phone}</Text>
 
           {/* Мини-статистика */}
           <View style={styles.statsRow}>
             <View style={styles.statBox}>
-              <Text style={styles.statNum}>{bookings.filter(b => b.renterId === CURRENT_USER_ID).length}</Text>
+              <Text style={styles.statNum}>{bookings.filter(b => b.renterId === user?.id).length}</Text>
               <Text style={styles.statLabel}>Аренд</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statBox}>
-              <Text style={styles.statNum}>{bookings.filter(b => b.ownerId === CURRENT_USER_ID).length}</Text>
+              <Text style={styles.statNum}>{bookings.filter(b => b.ownerId === user?.id).length}</Text>
               <Text style={styles.statLabel}>Сдано</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statBox}>
-              <Text style={styles.statNum}>4.9</Text>
+              <Text style={styles.statNum}>5.0</Text>
               <Text style={styles.statLabel}>Рейтинг</Text>
             </View>
           </View>
         </View>
 
+        {/* PINFL Verification Banner */}
+        {!user?.isPinflVerified && (
+          <TouchableOpacity style={styles.verifyBanner} activeOpacity={0.9}>
+            <View style={styles.verifyIconBox}>
+              <Ionicons name="shield-checkmark" size={24} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.verifyTitle}>Верификация MyID</Text>
+              <Text style={styles.verifyText}>Подтвердите личность (PINFL), чтобы сдавать вещи в аренду</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#fff" />
+          </TouchableOpacity>
+        )}
+
         {/* ── Меню ──────────────────────────────────────────────────── */}
         <View style={styles.section}>
-          <MenuItem icon="settings-outline" label="Настройки профиля" />
-          <MenuItem icon="card-outline" label="Мои карты" />
-          <MenuItem icon="shield-checkmark-outline" label="Верификация MyID" />
-          <MenuItem icon="help-circle-outline" label="Поддержка" />
+          <MenuItem
+            icon="list-outline"
+            label="Мои объявления"
+            onPress={() => router.push({ pathname: '/my-listings' } as any)}
+          />
+          <MenuItem
+            icon="notifications-outline"
+            label="Уведомления"
+            onPress={() => router.push({ pathname: '/notifications' } as any)}
+          />
+          <MenuItem icon="card-outline" label="Способы оплаты" />
+          <MenuItem
+            icon="settings-outline"
+            label="Настройки"
+            onPress={() => router.push({ pathname: '/profile/settings' } as any)}
+          />
         </View>
 
         {/* ── Раздел Чеки (Мои аренды) ──────────────────────────────── */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Мои аренды</Text>
+          <Text style={styles.sectionTitle}>Мои заказы</Text>
 
           {/* Табы */}
           <View style={styles.tabs}>
@@ -258,12 +311,12 @@ export default function ProfileScreen() {
               <Ionicons name="receipt-outline" size={40} color="#E2E8F0" />
               <Text style={styles.emptyText}>
                 {tab === 'renting'
-                  ? 'Вы ничего не арендовали'
-                  : 'Вы ничего не сдавали'}
+                  ? 'У вас пока нет активных заказов'
+                  : 'Ваши вещи пока не арендовали'}
               </Text>
             </View>
           ) : (
-            filtered.map((b) => <ReceiptCard key={b.id} booking={b} />)
+            filtered.map((b) => <ReceiptCard key={b.id} booking={b} currentUserId={user?.id || ''} />)
           )}
         </View>
 
@@ -283,7 +336,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
-    marginBottom: 12,
+    marginBottom: 0,
   },
   avatar: {
     width: 80, height: 80, borderRadius: 40,
@@ -302,6 +355,16 @@ const styles = StyleSheet.create({
   statNum: { fontSize: 20, fontWeight: '900', color: Colors.text },
   statLabel: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
   statDivider: { width: 1, backgroundColor: '#F1F5F9', marginHorizontal: 8 },
+  verifyBanner: {
+    backgroundColor: Colors.primary,
+    margin: 16, borderRadius: 20, padding: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2, shadowRadius: 8, elevation: 5,
+  },
+  verifyIconBox: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+  verifyTitle: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  verifyText: { color: 'rgba(255,255,255,0.9)', fontSize: 12, marginTop: 2, fontWeight: '500' },
   section: {
     backgroundColor: '#fff',
     marginHorizontal: 0,
@@ -330,4 +393,9 @@ const styles = StyleSheet.create({
     alignItems: 'center', paddingVertical: 32, gap: 10,
   },
   emptyText: { fontSize: 13, color: '#CBD5E1' },
+  authPlaceholder: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
+  authTitle: { fontSize: 24, fontWeight: '900', color: Colors.text, marginTop: 20 },
+  authSub: { fontSize: 15, color: '#64748B', textAlign: 'center', marginTop: 10, lineHeight: 22 },
+  loginBtn: { backgroundColor: Colors.primary, paddingHorizontal: 30, paddingVertical: 16, borderRadius: 20, marginTop: 30 },
+  loginBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

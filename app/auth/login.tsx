@@ -1,20 +1,31 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React from 'react';
-import { SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, Alert, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
-import { useAuth } from '../../context/AuthContext';
+import * as authService from '../../services/authService';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login } = useAuth();
+  const [phone, setPhone] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
+  const handleSendOTP = async () => {
+    if (phone.length < 9) {
+      Alert.alert('Ошибка', 'Введите корректный номер телефона');
+      return;
+    }
+
+    setLoading(true);
     try {
-      await login();
-      router.replace('/');
+      await authService.sendOTP(`+998${phone}`);
+      router.push({
+        pathname: '/auth/verify',
+        params: { phone: `+998${phone}` }
+      });
     } catch (error) {
-      console.error('Login failed', error);
+      Alert.alert('Ошибка', 'Не удалось отправить код');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -34,21 +45,22 @@ export default function LoginScreen() {
             placeholderTextColor="#94A3B8"
             style={styles.input}
             keyboardType="phone-pad"
+            value={phone}
+            onChangeText={setPhone}
+            maxLength={9}
           />
         </View>
 
-        <View style={styles.inputWrapper}>
-          <Ionicons name="lock-closed-outline" size={20} color={Colors.primary} style={styles.icon} />
-          <TextInput
-            placeholder="Пароль"
-            placeholderTextColor="#94A3B8"
-            style={styles.input}
-            secureTextEntry
-          />
-        </View>
-
-        <TouchableOpacity style={styles.mainBtn} onPress={handleLogin}>
-          <Text style={styles.mainBtnText}>Войти</Text>
+        <TouchableOpacity
+          style={[styles.mainBtn, loading && { opacity: 0.7 }]}
+          onPress={handleSendOTP}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.mainBtnText}>Получить код</Text>
+          )}
         </TouchableOpacity>
 
         <View style={styles.footerLinkWrapper}>
@@ -75,7 +87,6 @@ const styles = StyleSheet.create({
   uzbPrefix: { flexDirection: 'row', alignItems: 'center', borderRightWidth: 1, borderRightColor: '#CBD5E1', paddingRight: 10, marginRight: 10, gap: 5 },
   flag: { fontSize: 18 },
   prefixText: { fontSize: 16, fontWeight: '600', color: '#1E293B' },
-  icon: { marginRight: 10 },
   input: { flex: 1, fontSize: 16, color: '#1E293B' },
   mainBtn: { backgroundColor: Colors.primary, height: 60, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginTop: 10 },
   mainBtnText: { color: '#FFFFFF', fontSize: 18, fontWeight: '700' },
