@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { AUTH_TOKEN_KEY, AUTH_USER_KEY } from '../api/client';
 import * as authService from '../services/authService';
 import { User } from '../types/user.types';
 
@@ -8,13 +9,11 @@ interface AuthContextType {
     user: User | null;
     login: (phone: string, otp: string) => Promise<void>;
     logout: () => Promise<void>;
+    updateUser: (patch: Partial<User>) => Promise<void>;
     loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-const AUTH_TOKEN_KEY = 'ijarachi_access_token';
-const AUTH_USER_KEY = 'ijarachi_user_data';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -50,15 +49,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const logout = async () => {
-        await authService.logout();
-        await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
-        await AsyncStorage.removeItem(AUTH_USER_KEY);
+        try {
+            await authService.logout();
+        } catch (e) {
+            console.warn('logout API failed, clearing session anyway', e);
+        }
+        await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, AUTH_USER_KEY]);
         setUser(null);
         setIsLoggedIn(false);
     };
 
+    const updateUser = async (patch: Partial<User>) => {
+        setUser(prev => {
+            const next = prev ? { ...prev, ...patch } : prev;
+            if (next) AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(next)).catch(() => {});
+            return next;
+        });
+    };
+
     return (
-        <AuthContext.Provider value={{ isLoggedIn, user, login, logout, loading }}>
+        <AuthContext.Provider value={{ isLoggedIn, user, login, logout, updateUser, loading }}>
             {children}
         </AuthContext.Provider>
     );

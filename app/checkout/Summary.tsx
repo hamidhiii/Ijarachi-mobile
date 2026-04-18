@@ -14,12 +14,12 @@ export default function OrderSummary() {
   const product = ITEMS.find(p => p.id === id) || ITEMS[0];
   const daysCount = parseInt(days as string) || 1;
   const quantity = parseInt(qty as string) || 1;
-  const pricePerDay = parseInt(product.price.replace(/[^0-9]/g, ''));
+  const pricePerDay =
+    product.priceNum ?? (parseInt((product.price ?? '0').replace(/\D/g, ''), 10) || 0);
 
   // Итоговый расчет: Цена * Дни * Количество
   const rentTotal = pricePerDay * daysCount * quantity;
-  const insuranceFee = Math.round(rentTotal * 0.05); // 5% Страховой взнос
-  const totalAmount = rentTotal + insuranceFee;
+  const totalAmount = rentTotal;
 
   // Функция для красивого формата дат (например, "12 апр.")
   const formatDate = (dateStr: string) => {
@@ -75,14 +75,6 @@ export default function OrderSummary() {
             <Text style={styles.value}>{rentTotal.toLocaleString()} сум</Text>
           </View>
 
-          <View style={styles.row}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-              <Text style={styles.label}>Страховой взнос (5%)</Text>
-              <Ionicons name="information-circle-outline" size={14} color={Colors.primary} />
-            </View>
-            <Text style={styles.value}>+ {insuranceFee.toLocaleString()} сум</Text>
-          </View>
-
           <View style={[styles.row, styles.totalRow]}>
             <Text style={styles.totalLabel}>Итого к оплате</Text>
             <Text style={styles.totalValue}>{totalAmount.toLocaleString()} сум</Text>
@@ -92,7 +84,7 @@ export default function OrderSummary() {
         <View style={styles.infoBox}>
           <Ionicons name="shield-checkmark" size={20} color={Colors.primary} />
           <Text style={styles.infoText}>
-            Деньги будут храниться в системе SYNTH и будут переведены владельцу только после того, как вы вернете вещь.
+            Деньги зарезервированы на защищённом счёте Rentoo и переводятся владельцу только после того, как вы вернёте вещь в исправном виде.
           </Text>
         </View>
       </ScrollView>

@@ -5,7 +5,6 @@ import { ActivityIndicator, Alert, Image, SafeAreaView, StyleSheet, Text, Toucha
 import { Colors } from '../../constants/Colors';
 import { ITEMS } from '../../constants/data';
 import { useAuth } from '../../context/AuthContext';
-import { CURRENT_USER_ID } from '../../mocks/bookings';
 import { chatService } from '../../services/chatService';
 import { createBooking } from '../../services/rentalService';
 
@@ -16,7 +15,7 @@ export default function PaymentScreen() {
   const [loading, setLoading] = useState(false);
 
   // Используем реальное состояние авторизации
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, user } = useAuth();
   const isGuest = !isLoggedIn;
 
   const handleFinish = async () => {
@@ -48,32 +47,28 @@ export default function PaymentScreen() {
       itemPricePerDay: parseInt(product.price.replace(/[^0-9]/g, '')),
       ownerId: (product as any).seller?.id ?? 'user_alice',
       ownerName: (product as any).seller?.name ?? 'Алина',
-      renterId: CURRENT_USER_ID,
-      renterName: 'Вы',
+      renterId: user?.id ?? 'user_me',
+      renterName: user?.name ?? 'Вы',
       startDate: (startDate as string) || new Date().toISOString().split('T')[0],
       endDate: (endDate as string) || new Date().toISOString().split('T')[0],
       totalDays: daysNum,
       totalAmount: totalAmt,
-      status: 'pending_handover',
-      ownerHandoverPhotos: [],
-      renterHandoverPhotos: [],
-      renterReturnPhotos: [],
-      disputeEvidence: [],
+      status: 'confirmed',
     });
 
-    // АВТОМАТИЗАЦИЯ: Отправляем сообщение владельцу
+    // АВТОМАТИЗАЦИЯ: Отправляем уведомление владельцу в чат
     await chatService.sendMessage({
       recipientId: booking.ownerId,
       type: 'rental_request',
       bookingId: booking.id,
-      text: `Запрос на аренду: ${booking.itemTitle}`
+      text: `Новый заказ: ${booking.itemTitle}. Курьер Rentoo свяжется с вами для передачи вещи.`
     });
 
     setLoading(false);
     Alert.alert(
       'Заказ оформлен',
-      'Владельцу отправлен запрос в чат. Перейдите к идентификации личности.',
-      [{ text: 'ОК', onPress: () => router.replace({ pathname: '/auth/myid', params: { bookingId: booking.id } }) }]
+      'Оплата прошла успешно. Курьер Rentoo свяжется с вами для передачи вещи.',
+      [{ text: 'ОК', onPress: () => router.replace('/(tabs)/profile') }]
     );
   };
 

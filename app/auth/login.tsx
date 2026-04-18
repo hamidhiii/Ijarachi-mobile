@@ -32,7 +32,7 @@ export default function LoginScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.logoText}>Ijarachi</Text>
+        <Text style={styles.logoText}>Rentoo</Text>
         <Text style={styles.subTitle}>С возвращением!</Text>
 
         <View style={styles.inputWrapper}>

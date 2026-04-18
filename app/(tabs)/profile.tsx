@@ -18,47 +18,16 @@ import { Booking, BookingStatus, UserRole } from '../../types/rental.types';
 
 const STATUS_META: Record<BookingStatus, { label: string; color: string; bg: string; icon: string }> = {
   pending_payment: { label: 'Ожидает оплаты', color: '#D97706', bg: '#FFFBEB', icon: 'card-outline' },
-  pending_handover: { label: 'Передача вещи', color: '#2563EB', bg: '#EFF6FF', icon: 'hand-right-outline' },
-  pending_renter_confirm: { label: 'Ждём вас', color: '#7C3AED', bg: '#F5F3FF', icon: 'eye-outline' },
+  confirmed: { label: 'Курьер назначен', color: '#2563EB', bg: '#EFF6FF', icon: 'bicycle-outline' },
   active: { label: 'Аренда идёт', color: '#059669', bg: '#ECFDF5', icon: 'checkmark-circle-outline' },
-  pending_return: { label: 'Возврат', color: '#D97706', bg: '#FFFBEB', icon: 'return-down-back-outline' },
-  pending_owner_confirm: { label: 'Ждём владельца', color: '#7C3AED', bg: '#F5F3FF', icon: 'hourglass-outline' },
   completed: { label: 'Завершено', color: '#64748B', bg: '#F8FAFC', icon: 'checkmark-done-outline' },
   in_dispute: { label: 'Спор открыт', color: '#DC2626', bg: '#FEF2F2', icon: 'warning-outline' },
-  moderating: { label: 'На модерации', color: '#64748B', bg: '#F8FAFC', icon: 'shield-outline' },
   cancelled: { label: 'Отменено', color: '#94A3B8', bg: '#F8FAFC', icon: 'close-circle-outline' },
 };
-
-function useActionButton(booking: Booking, myRole: UserRole) {
-  const router = useRouter();
-  switch (booking.status) {
-    case 'pending_handover':
-      return myRole === 'owner'
-        ? { label: 'Передать вещь', icon: 'camera-outline', onPress: () => router.push({ pathname: '/protocol/handover/[bookingId]', params: { bookingId: booking.id } }) }
-        : null;
-    case 'pending_renter_confirm':
-      return myRole === 'renter'
-        ? { label: 'Подтвердить получение', icon: 'checkmark-circle-outline', onPress: () => router.push({ pathname: '/protocol/handover/[bookingId]', params: { bookingId: booking.id } }) }
-        : null;
-    case 'active':
-      return myRole === 'renter'
-        ? { label: 'Вернуть вещь', icon: 'return-down-back-outline', onPress: () => router.push({ pathname: '/protocol/return/[bookingId]', params: { bookingId: booking.id } }) }
-        : null;
-    case 'pending_owner_confirm':
-      return myRole === 'owner'
-        ? { label: 'Подтвердить возврат', icon: 'eye-outline', onPress: () => router.push({ pathname: '/protocol/return/[bookingId]', params: { bookingId: booking.id } }) }
-        : null;
-    case 'in_dispute':
-      return { label: 'Добавить доказательства', icon: 'document-text-outline', onPress: () => router.push({ pathname: '/protocol/dispute/[bookingId]', params: { bookingId: booking.id } }) };
-    default:
-      return null;
-  }
-}
 
 function ReceiptCard({ booking, currentUserId }: { booking: Booking; currentUserId: string }) {
   const myRole: UserRole = booking.ownerId === currentUserId ? 'owner' : 'renter';
   const meta = STATUS_META[booking.status];
-  const action = useActionButton(booking, myRole);
 
   return (
     <View style={cardStyles.card}>
@@ -78,13 +47,6 @@ function ReceiptCard({ booking, currentUserId }: { booking: Booking; currentUser
       <Text style={cardStyles.roleText}>
         {myRole === 'owner' ? `→ ${booking.renterName}` : `у ${booking.ownerName}`}
       </Text>
-
-      {action && (
-        <TouchableOpacity style={cardStyles.actionBtn} onPress={action.onPress} activeOpacity={0.8}>
-          <Ionicons name={action.icon as any} size={15} color="#fff" />
-          <Text style={cardStyles.actionText}>{action.label}</Text>
-        </TouchableOpacity>
-      )}
     </View>
   );
 }
@@ -117,12 +79,6 @@ const cardStyles = StyleSheet.create({
   },
   badgeText: { fontSize: 9, fontWeight: '700' },
   roleText: { fontSize: 11, color: '#64748B' },
-  actionBtn: {
-    backgroundColor: Colors.primary, flexDirection: 'row',
-    alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 10, borderRadius: 12, gap: 6,
-  },
-  actionText: { color: '#fff', fontSize: 12, fontWeight: '700' },
 });
 
 function MenuItem({ icon, label, onPress }: { icon: string; label: string; onPress?: () => void }) {
@@ -240,7 +196,7 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statBox}>
-              <Text style={styles.statNum}>5.0</Text>
+              <Text style={styles.statNum}>{(user as any)?.rating?.toFixed(1) ?? '5.0'}</Text>
               <Text style={styles.statLabel}>Рейтинг</Text>
             </View>
           </View>
@@ -262,6 +218,11 @@ export default function ProfileScreen() {
 
         {/* ── Меню ──────────────────────────────────────────────────── */}
         <View style={styles.section}>
+          <MenuItem
+            icon="person-outline"
+            label="Редактировать профиль"
+            onPress={() => router.push({ pathname: '/profile/edit' } as any)}
+          />
           <MenuItem
             icon="list-outline"
             label="Мои объявления"

@@ -8,11 +8,10 @@ export default function MyIdVerification() {
   const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
 
   const handleComplete = () => {
-    if (bookingId) {
-      router.replace({ pathname: '/protocol/handover/[bookingId]', params: { bookingId } });
-    } else {
-      router.replace('/');
-    }
+    // После MyID-подтверждения ведём на вкладку профиля, где видны бронирования.
+    // bookingId пока не используется — оставлен на случай будущих шагов (напр. оплата).
+    void bookingId;
+    router.replace('/(tabs)/profile');
   };
 
   return (

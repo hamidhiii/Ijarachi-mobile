@@ -1,11 +1,15 @@
+import { Ionicons } from '@expo/vector-icons';
+import { useWishlist } from '@/context/WishlistContext';
+import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 import React, { memo } from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/Colors';
-import { useWishlist } from '@/context/WishlistContext';
-import { Ionicons } from '@expo/vector-icons'; // Не забудь импорт иконок
+import { Listing } from '../types/listing.types';
 
-const ProductCard = memo(({ item }: any) => {
+type ProductCardProps = { item: Listing };
+
+function ProductCard({ item }: ProductCardProps) {
     const { wishlist, toggleWishlist } = useWishlist();
     const isFavorite = wishlist.includes(item.id);
 
@@ -26,7 +30,14 @@ const ProductCard = memo(({ item }: any) => {
 
             <Link href={`/product/${item.id}`} asChild>
                 <TouchableOpacity style={styles.card} activeOpacity={0.9}>
-                    <Image source={item.image} style={styles.image} resizeMode="cover" />
+                    <Image
+                        source={item.image}
+                        style={styles.image}
+                        contentFit="cover"
+                        cachePolicy="memory-disk"
+                        transition={150}
+                        recyclingKey={item.id}
+                    />
                     <View style={styles.info}>
                         <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
                         <Text style={styles.price}>{item.price}</Text>
@@ -36,7 +47,7 @@ const ProductCard = memo(({ item }: any) => {
             </Link>
         </View>
     );
-});
+}
 
 const styles = StyleSheet.create({
     cardContainer: {

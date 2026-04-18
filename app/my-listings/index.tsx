@@ -1,40 +1,83 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
+import { ActivityIndicator, Alert, FlatList, Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
+import { useAuth } from '../../context/AuthContext';
 import * as listingService from '../../services/listingService';
 import { Listing } from '../../types/listing.types';
 
 export default function MyListingsScreen() {
     const router = useRouter();
+    const { user, isLoggedIn } = useAuth();
     const [listings, setListings] = useState<Listing[]>([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        loadListings();
-    }, []);
-
-    const loadListings = async () => {
+    const loadListings = useCallback(async () => {
+        if (!user?.id) {
+            setListings([]);
+            setLoading(false);
+            return;
+        }
         setLoading(true);
         try {
-            const data = await listingService.getMyListings('user_me');
+            const data = await listingService.getMyListings(user.id);
             setListings(data);
         } catch (error) {
             console.error(error);
         } finally {
             setLoading(false);
         }
+    }, [user?.id]);
+
+    useFocusEffect(
+        useCallback(() => {
+            loadListings();
+        }, [loadListings])
+    );
+
+    const handleDelete = (id: string, title: string) => {
+        Alert.alert(
+            'Удалить объявление?',
+            `«${title}» будет удалено без возможности восстановления.`,
+            [
+                { text: 'Отмена', style: 'cancel' },
+                {
+                    text: 'Удалить',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await listingService.deleteListing(id);
+                            setListings(prev => prev.filter(l => l.id !== id));
+                        } catch {
+                            Alert.alert('Ошибка', 'Не удалось удалить объявление.');
+                        }
+                    },
+                },
+            ]
+        );
     };
 
-    const handleDelete = async (id: string) => {
-        try {
-            await listingService.deleteListing(id);
-            setListings(prev => prev.filter(l => l.id !== id));
-        } catch (error) {
-            alert('Ошибка при удалении');
-        }
-    };
+    if (!isLoggedIn) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => router.back()}>
+                        <Ionicons name="chevron-back" size={28} color={Colors.text} />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Мои объявления</Text>
+                    <View style={{ width: 28 }} />
+                </View>
+                <View style={styles.empty}>
+                    <Ionicons name="lock-closed-outline" size={64} color="#CBD5E1" />
+                    <Text style={styles.emptyText}>Войдите, чтобы увидеть свои объявления</Text>
+                    <TouchableOpacity style={styles.addBtn} onPress={() => router.push('/auth/login')}>
+                        <Text style={styles.addBtnText}>Войти</Text>
+                    </TouchableOpacity>
+                </View>
+            </SafeAreaView>
+        );
+    }
 
     const renderItem = ({ item }: { item: Listing }) => (
         <View style={styles.card}>
@@ -51,7 +94,7 @@ export default function MyListingsScreen() {
                 <TouchableOpacity onPress={() => router.push(`/my-listings/${item.id}/edit`)}>
                     <Ionicons name="pencil-outline" size={24} color={Colors.primary} />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleDelete(item.id)}>
+                <TouchableOpacity onPress={() => handleDelete(item.id, item.title)}>
                     <Ionicons name="trash-outline" size={24} color="#EF4444" />
                 </TouchableOpacity>
             </View>

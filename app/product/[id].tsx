@@ -272,7 +272,8 @@ export default function ProductDetail() {
                                 setShowStartPicker(false);
                                 setShowEndPicker(false);
                                 if (date) {
-                                    showStartPicker ? setStartTime(date) : setEndTime(date);
+                                    if (showStartPicker) setStartTime(date);
+                                    else setEndTime(date);
                                 }
                             }}
                         />

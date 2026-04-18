@@ -1,3 +1,5 @@
+import type { Listing } from '../types/listing.types';
+
 export const CATEGORIES = [
   { id: 'all', title: 'Все', icon: 'grid-outline', type: 'quantity' },
   { id: 'dresses', title: 'Платья', icon: 'woman-outline', type: 'size' },
@@ -11,7 +13,7 @@ export const CATEGORIES = [
   { id: 'electronics', title: 'Техника', icon: 'camera-outline', type: 'quantity' },
 ];
 
-export const ITEMS = [
+export const ITEMS: Listing[] = [
   {
     id: '1',
     title: 'Свадебное платье "Grace"',

@@ -58,7 +58,7 @@ export default function RegisterScreen() {
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={styles.content}>
-          <Text style={styles.logoText}>Ijarachi</Text>
+          <Text style={styles.logoText}>Rentoo</Text>
           <Text style={styles.subTitle}>Создайте аккаунт</Text>
 
           <View style={styles.inputLabelGroup}>

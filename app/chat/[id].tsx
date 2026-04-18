@@ -17,7 +17,7 @@ import RentalRequestCard from '../../components/chat/RentalRequestCard';
 import { Colors } from '../../constants/Colors';
 import { CURRENT_USER_ID } from '../../mocks/bookings';
 import { chatService } from '../../services/chatService';
-import { getBookingById, updateBookingStatus } from '../../services/rentalService';
+import { getBookingById } from '../../services/rentalService';
 import { Booking, ChatMessage, Conversation } from '../../types/rental.types';
 
 export default function ChatDetailScreen() {
@@ -67,16 +67,6 @@ export default function ChatDetailScreen() {
             text: inputText.trim()
         });
         setInputText('');
-        loadChat();
-    };
-
-    const handleAcceptRequest = async (bookingId: string) => {
-        await updateBookingStatus(bookingId, 'pending_handover');
-        loadChat();
-    };
-
-    const handleDeclineRequest = async (bookingId: string) => {
-        await updateBookingStatus(bookingId, 'cancelled');
         loadChat();
     };
 

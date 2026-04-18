@@ -1,50 +1,18 @@
 // ─── Rental Types ────────────────────────────────────────────────────────────
-// Все типы, связанные с арендой, бронированием и фотопротоколом.
-// Когда будет подключён реальный API — меняем только сервис, компоненты не трогаем.
+// Все типы, связанные с арендой и бронированием.
+// Физическую передачу вещей обеспечивают курьеры Rentoo (для одежды)
+// или выездная бригада (для мебели/техники) — поэтому никакого фотопротокола
+// от пользователя не требуется.
 
 export type UserRole = 'owner' | 'renter';
 
 export type BookingStatus =
-  | 'pending_payment'      // Оплата ещё не прошла
-  | 'pending_handover'     // Ожидание передачи (владелец должен сфотографировать)
-  | 'pending_renter_confirm' // Владелец сфоткал, ждём подтверждения арендатора
-  | 'active'               // Аренда идёт (обе стороны подтвердили)
-  | 'pending_return'       // Арендатор инициировал возврат, ждём фото
-  | 'pending_owner_confirm'// Арендатор вернул, ждём владельца
-  | 'completed'            // Завершено успешно, деньги разморожены
-  | 'in_dispute'           // Открыт спор
-  | 'moderating'           // Модератор рассматривает спор
-  | 'cancelled';           // Отменено
-
-// Тип снимка — для подсказок при съёмке
-export type PhotoShotType =
-  | 'overview_1'    // Общий вид с угла 1
-  | 'overview_2'    // Общий вид с угла 2
-  | 'close_up'      // Крупный план основного элемента / дефектов
-  | 'label'         // Бирка / серийный номер
-  | 'with_person';  // На фоне владельца / арендатора
-
-// Фаза протокола
-export type ProtocolPhase = 'handover_owner' | 'handover_renter' | 'return_renter' | 'dispute';
-
-export interface ProtocolPhoto {
-  id: string;
-  uri: string;           // Локальный URI или URL с сервера
-  shotType: PhotoShotType;
-  phase: ProtocolPhase;
-  timestamp: string;     // ISO 8601
-  gpsLat?: number;
-  gpsLng?: number;
-  hash: string;          // SHA-256 хэш файла (заглушка на MVP)
-}
-
-export interface DisputeEvidence {
-  id: string;
-  authorRole: UserRole;
-  photoUris: string[];
-  comment: string;
-  uploadedAt: string;
-}
+  | 'pending_payment'       // Оплата ещё не прошла (промежуточное)
+  | 'confirmed'             // Оплачено, курьер Rentoo назначен
+  | 'active'                // Вещь у арендатора, аренда идёт
+  | 'completed'             // Завершено успешно
+  | 'cancelled'             // Отменено
+  | 'in_dispute';           // Спор (на модерации Rentoo)
 
 export interface Booking {
   id: string;
@@ -66,20 +34,14 @@ export interface Booking {
 
   status: BookingStatus;
 
-  // Фотопротокол
-  ownerHandoverPhotos: ProtocolPhoto[];  // Фото владельца при передаче
-  renterHandoverPhotos: ProtocolPhoto[]; // Фото арендатора при получении
-  renterReturnPhotos: ProtocolPhoto[];   // Фото арендатора при возврате
-  disputeEvidence: DisputeEvidence[];
-
   // Временные метки
   createdAt: string;
-  handoverConfirmedAt?: string;
-  renterConfirmedAt?: string;
-  returnInitiatedAt?: string;
-  ownerConfirmedAt?: string;
-  completedAt?: string;
+  confirmedAt?: string;       // Момент, когда курьер назначен
+  activatedAt?: string;       // Курьер передал вещь арендатору
+  completedAt?: string;       // Курьер забрал вещь обратно
+  cancelledAt?: string;
   disputeOpenedAt?: string;
+  disputeReason?: string;
 }
 
 // ─── Chat Types ─────────────────────────────────────────────────────────────

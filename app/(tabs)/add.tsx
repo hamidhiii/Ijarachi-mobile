@@ -21,12 +21,14 @@ import SizeSelectorMultiple from '../../components/listing/SizeSelectorMultiple'
 import { Colors } from '../../constants/Colors';
 import { CATEGORIES as DATA_CATEGORIES } from '../../constants/data';
 import { ALL_CLOTHING_SIZES, CLOTHING_CATEGORIES } from '../../constants/sizes';
+import { useAuth } from '../../context/AuthContext';
 import * as listingService from '../../services/listingService';
 
 const CATEGORIES = DATA_CATEGORIES.filter(c => c.id !== 'all');
 
 export default function AddProductScreen() {
     const router = useRouter();
+    const { user, isLoggedIn } = useAuth();
     const [images, setImages] = useState<string[]>([]);
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
@@ -44,15 +46,28 @@ export default function AddProductScreen() {
         [selectedCategory]);
 
     const pickImage = async () => {
+        const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!perm.granted) {
+            Alert.alert(
+                'Нет доступа к галерее',
+                'Разрешите доступ к фото в настройках, чтобы добавить фотографии объявления.'
+            );
+            return;
+        }
+        if (images.length >= 10) {
+            Alert.alert('Максимум 10 фото', 'Удалите лишние, чтобы добавить другие.');
+            return;
+        }
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsMultipleSelection: true,
+            selectionLimit: 10 - images.length,
             quality: 0.8,
         });
 
         if (!result.canceled) {
             const uris = result.assets.map(asset => asset.uri);
-            setImages(prev => [...prev, ...uris]);
+            setImages(prev => [...prev, ...uris].slice(0, 10));
         }
     };
 
@@ -61,6 +76,17 @@ export default function AddProductScreen() {
     };
 
     const handlePublish = async () => {
+        if (!isLoggedIn || !user) {
+            Alert.alert(
+                'Нужно войти',
+                'Чтобы опубликовать объявление, войдите в аккаунт.',
+                [
+                    { text: 'Отмена', style: 'cancel' },
+                    { text: 'Войти', onPress: () => router.push('/auth/login') },
+                ]
+            );
+            return;
+        }
         if (images.length === 0) {
             Alert.alert('Нет фото', 'Добавьте хотя бы одну фотографию вещи.');
             return;
@@ -69,6 +95,12 @@ export default function AddProductScreen() {
             Alert.alert('Пустые поля', 'Укажите название, категорию и цену за день.');
             return;
         }
+        const priceNum = parseInt(price.replace(/\D/g, ''), 10);
+        if (!priceNum || priceNum < 1000) {
+            Alert.alert('Некорректная цена', 'Минимальная цена аренды — 1 000 сум в день.');
+            return;
+        }
+        const qtyNum = parseInt(quantity.replace(/\D/g, ''), 10) || 1;
 
         if (isSizeCategory && selectedSizes.length === 0) {
             Alert.alert('Нет размеров', 'Выберите хотя бы один размер.');
@@ -77,25 +109,28 @@ export default function AddProductScreen() {
 
         setLoading(true);
         try {
-            await listingService.createListing({
-                title,
-                description,
-                priceNum: parseInt(price),
-                category: selectedCategory,
-                categoryType: isSizeCategory ? 'size' : 'quantity',
-                availableSizes: isSizeCategory ? selectedSizes : [],
-                maxQuantity: isSizeCategory ? 1 : parseInt(quantity),
-                unit: isSizeCategory ? 'шт' : unit,
-                image: { uri: images[0] }, // Using first image as main
-                location: 'Ташкент',
-            });
+            await listingService.createListing(
+                {
+                    title: title.trim(),
+                    description: description.trim(),
+                    priceNum,
+                    category: selectedCategory,
+                    categoryType: isSizeCategory ? 'size' : 'quantity',
+                    availableSizes: isSizeCategory ? selectedSizes : [],
+                    maxQuantity: isSizeCategory ? 1 : qtyNum,
+                    unit: isSizeCategory ? 'шт' : unit,
+                    image: { uri: images[0] }, // первая фотка — главная
+                    location: 'Ташкент',
+                },
+                { id: user.id, name: user.name }
+            );
 
             Alert.alert(
                 'Готово!',
                 'Ваше объявление опубликовано.',
                 [{ text: 'Отлично', onPress: () => router.replace('/(tabs)') }]
             );
-        } catch (error) {
+        } catch {
             Alert.alert('Ошибка', 'Не удалось опубликовать объявление.');
         } finally {
             setLoading(false);

@@ -1,7 +1,7 @@
 import { Booking } from '../types/rental.types';
 
-// ─── Мок-данные для тестирования фотопротокола ────────────────────────────────
-// Каждое бронирование — разный статус, чтобы протестировать все экраны.
+// ─── Mock-данные для разработки ──────────────────────────────────────────────
+// Разные статусы, чтобы проверять все ветки UI.
 
 export const MOCK_BOOKINGS: Booking[] = [
     {
@@ -18,12 +18,9 @@ export const MOCK_BOOKINGS: Booking[] = [
         endDate: '2026-04-12',
         totalDays: 3,
         totalAmount: 1500000,
-        status: 'pending_handover',
-        ownerHandoverPhotos: [],
-        renterHandoverPhotos: [],
-        renterReturnPhotos: [],
-        disputeEvidence: [],
+        status: 'confirmed',
         createdAt: '2026-04-08T06:00:00.000Z',
+        confirmedAt: '2026-04-08T06:05:00.000Z',
     },
     {
         id: 'booking_002',
@@ -39,14 +36,10 @@ export const MOCK_BOOKINGS: Booking[] = [
         endDate: '2026-04-09',
         totalDays: 2,
         totalAmount: 1000000,
-        status: 'pending_handover',
-        ownerHandoverPhotos: [],
-        renterHandoverPhotos: [],
-        renterReturnPhotos: [],
-        disputeEvidence: [],
+        status: 'active',
         createdAt: '2026-04-06T10:00:00.000Z',
-        handoverConfirmedAt: '2026-04-08T09:00:00.000Z',
-        renterConfirmedAt: '2026-04-08T09:30:00.000Z',
+        confirmedAt: '2026-04-06T10:10:00.000Z',
+        activatedAt: '2026-04-08T09:00:00.000Z',
     },
     {
         id: 'booking_003',
@@ -62,15 +55,11 @@ export const MOCK_BOOKINGS: Booking[] = [
         endDate: '2026-04-07',
         totalDays: 3,
         totalAmount: 75000,
-        status: 'pending_owner_confirm',
-        ownerHandoverPhotos: [],
-        renterHandoverPhotos: [],
-        renterReturnPhotos: [],
-        disputeEvidence: [],
+        status: 'completed',
         createdAt: '2026-04-04T08:00:00.000Z',
-        handoverConfirmedAt: '2026-04-05T10:00:00.000Z',
-        renterConfirmedAt: '2026-04-05T10:30:00.000Z',
-        returnInitiatedAt: '2026-04-07T16:00:00.000Z',
+        confirmedAt: '2026-04-04T08:05:00.000Z',
+        activatedAt: '2026-04-05T10:00:00.000Z',
+        completedAt: '2026-04-07T18:00:00.000Z',
     },
     {
         id: 'booking_004',
@@ -87,23 +76,11 @@ export const MOCK_BOOKINGS: Booking[] = [
         totalDays: 3,
         totalAmount: 450000,
         status: 'in_dispute',
-        ownerHandoverPhotos: [],
-        renterHandoverPhotos: [],
-        renterReturnPhotos: [],
-        disputeEvidence: [
-            {
-                id: 'ev_001',
-                authorRole: 'renter',
-                photoUris: [],
-                comment: 'Арка была уже немного согнута при получении, но владелец говорит, что я сломала.',
-                uploadedAt: '2026-04-04T11:00:00.000Z',
-            },
-        ],
         createdAt: '2026-03-30T09:00:00.000Z',
-        handoverConfirmedAt: '2026-04-01T11:00:00.000Z',
-        renterConfirmedAt: '2026-04-01T11:30:00.000Z',
-        returnInitiatedAt: '2026-04-03T17:00:00.000Z',
+        confirmedAt: '2026-03-30T09:10:00.000Z',
+        activatedAt: '2026-04-01T11:00:00.000Z',
         disputeOpenedAt: '2026-04-03T18:00:00.000Z',
+        disputeReason: 'Арка возвращена повреждённой.',
     },
 ];
 

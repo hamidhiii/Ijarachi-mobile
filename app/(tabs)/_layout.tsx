@@ -10,8 +10,7 @@ export default function TabLayout() {
         headerShown: false,
         tabBarShowLabel: false,
         tabBarActiveTintColor: Colors.secondary,
-        tabBarInactiveTintColor: 'rgba(255,255,255,0.6)',
-        // Убрал absolute, чтобы он точно занял свое место внизу
+        tabBarInactiveTintColor: 'rgba(255,255,255,0.55)',
         tabBarStyle: {
           height: 90,
           backgroundColor: Colors.primary,
@@ -19,8 +18,8 @@ export default function TabLayout() {
           borderTopRightRadius: 30,
           borderTopWidth: 0,
           paddingBottom: Platform.OS === 'ios' ? 25 : 10,
-          elevation: 25, // Для Android
-          shadowColor: '#000', // Для iOS
+          elevation: 25,
+          shadowColor: '#000',
           shadowOffset: { width: 0, height: -4 },
           shadowOpacity: 0.2,
           shadowRadius: 10,
@@ -30,37 +29,43 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          tabBarIcon: ({ color }) => <Ionicons name="home" size={26} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={26} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="wishlist"
         options={{
-          tabBarIcon: ({ color }) => <Ionicons name="heart-outline" size={26} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'heart' : 'heart-outline'} size={26} color={color} />
+          ),
         }}
       />
-
       <Tabs.Screen
         name="add"
         options={{
           tabBarIcon: () => (
             <View style={styles.addBtn}>
-              <Ionicons name="add" size={32} color={Colors.text} />
+              <Ionicons name="add" size={32} color={Colors.primary} />
             </View>
           ),
         }}
       />
-
       <Tabs.Screen
         name="chat"
         options={{
-          tabBarIcon: ({ color }) => <Ionicons name="chatbubble-outline" size={26} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'chatbubble' : 'chatbubble-outline'} size={26} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          tabBarIcon: ({ color }) => <Ionicons name="person-outline" size={26} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={26} color={color} />
+          ),
         }}
       />
     </Tabs>
@@ -72,10 +77,10 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: Colors.secondary,
+    backgroundColor: Colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: -40, // Поднимаем кнопку над панелью
+    marginTop: -40,
     borderWidth: 5,
     borderColor: '#FFFFFF',
     elevation: 10,
@@ -83,5 +88,5 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 5,
-  }
+  },
 });

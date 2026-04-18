@@ -25,6 +25,7 @@ export default function HomeScreen() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const loadListings = useCallback(async () => {
     setLoading(true);
@@ -49,9 +50,17 @@ export default function HomeScreen() {
   }, [loadListings]);
 
   const filteredItems = useMemo(() => {
-    if (selectedCategory === 'all') return listings;
-    return listings.filter(item => item.category === selectedCategory);
-  }, [selectedCategory, listings]);
+    const q = searchQuery.trim().toLowerCase();
+    return listings.filter(item => {
+      if (selectedCategory !== 'all' && item.category !== selectedCategory) return false;
+      if (!q) return true;
+      return (
+        item.title.toLowerCase().includes(q) ||
+        (item.description ?? '').toLowerCase().includes(q) ||
+        (item.location ?? '').toLowerCase().includes(q)
+      );
+    });
+  }, [selectedCategory, listings, searchQuery]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -65,6 +74,11 @@ export default function HomeScreen() {
             placeholder="Что ищете?"
             placeholderTextColor={Colors.secondary}
             style={styles.searchInput}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            returnKeyType="search"
+            autoCorrect={false}
+            clearButtonMode="while-editing"
           />
         </View>
         <TouchableOpacity style={styles.notifBtn} onPress={() => router.push({ pathname: '/notifications' } as any)}>
@@ -87,7 +101,7 @@ export default function HomeScreen() {
       >
         {/* СЕКЦИЯ КАТЕГОРИЙ */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Категории Ijarachi</Text>
+          <Text style={styles.sectionTitle}>Категории Rentoo</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -124,9 +138,11 @@ export default function HomeScreen() {
         {/* СЕКЦИЯ ТОВАРОВ */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
-            {selectedCategory === 'all'
-              ? 'Рекомендовано вам'
-              : CATEGORIES.find(c => c.id === selectedCategory)?.title}
+            {searchQuery.trim()
+              ? `Результаты поиска${filteredItems.length ? ` (${filteredItems.length})` : ''}`
+              : selectedCategory === 'all'
+                ? 'Рекомендовано вам'
+                : CATEGORIES.find(c => c.id === selectedCategory)?.title}
           </Text>
 
           <View style={styles.grid}>
@@ -141,7 +157,11 @@ export default function HomeScreen() {
             ) : (
               <View style={styles.emptyBox}>
                 <Ionicons name="search" size={50} color="#E2E8F0" />
-                <Text style={styles.emptyText}>В этой категории пока нет вещей для аренды</Text>
+                <Text style={styles.emptyText}>
+                  {searchQuery.trim()
+                    ? `По запросу «${searchQuery.trim()}» ничего не найдено`
+                    : 'В этой категории пока нет вещей для аренды'}
+                </Text>
               </View>
             )}
           </View>
