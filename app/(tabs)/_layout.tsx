@@ -47,7 +47,7 @@ export default function TabLayout() {
         options={{
           tabBarIcon: () => (
             <View style={styles.addBtn}>
-              <Ionicons name="add" size={32} color={Colors.primary} />
+              <Ionicons name="add" size={32} color={Colors.text} />
             </View>
           ),
         }}
@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: Colors.accent,
+    backgroundColor: Colors.secondary,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: -40,

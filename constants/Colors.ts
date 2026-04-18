@@ -3,19 +3,18 @@
  * Используется практически во всех экранах: импорт
  *   `import { Colors } from '@/constants/Colors'` (или `../../constants/Colors`).
  *
- * Палитра подобрана под rental-marketplace: доверие (deep navy) + энергия (amber accent),
- * нейтралы для фона и текста — мягкие, не «больничные».
+ * Палитра оригинальная (emerald green).
  */
 
 export const Colors = {
-    // Бренд
-    primary: '#0F172A',        // deep navy — основной цвет (шапки, кнопки)
-    primaryDark: '#020617',
-    primarySoft: '#1E293B',    // темнее фон/тени
-    accent: '#F59E0B',         // amber — кнопка «арендовать», важные CTA
-    accentSoft: '#FEF3C7',
-    secondary: '#E0F2FE',      // активная категория
-    secondaryDark: '#BAE6FD',
+    // Бренд — зелёная палитра
+    primary: '#065F46',
+    primaryDark: '#064E3B',
+    primarySoft: '#047857',
+    accent: '#065F46',         // тот же, что primary — сохраняем зелёный акцент
+    accentSoft: '#D1FAE5',
+    secondary: '#A7F3D0',
+    secondaryDark: '#6EE7B7',
 
     // Фон и поверхности
     background: '#FFFFFF',
@@ -25,8 +24,8 @@ export const Colors = {
     white: '#FFFFFF',
 
     // Текст
-    text: '#0F172A',
-    textMuted: '#64748B',
+    text: '#064E3B',
+    textMuted: '#6B7280',
     textSubtle: '#94A3B8',
 
     // Системные
@@ -77,21 +76,21 @@ export const FontWeight = {
 
 export const Shadow = {
     sm: {
-        shadowColor: '#0F172A',
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.06,
         shadowRadius: 4,
         elevation: 2,
     },
     md: {
-        shadowColor: '#0F172A',
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.08,
         shadowRadius: 12,
         elevation: 5,
     },
     lg: {
-        shadowColor: '#0F172A',
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.12,
         shadowRadius: 20,
