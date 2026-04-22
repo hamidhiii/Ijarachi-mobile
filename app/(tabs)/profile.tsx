@@ -177,11 +177,27 @@ export default function ProfileScreen() {
       >
         {/* ── Шапка профиля ─────────────────────────────────────────── */}
         <View style={styles.profileHeader}>
-          <View style={styles.avatar}>
-            <Ionicons name="person" size={36} color="#fff" />
+          <View style={styles.profileTopRow}>
+            <View style={styles.avatar}>
+              <Ionicons name="person" size={34} color="#FFFFFF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.userName}>{user?.name}</Text>
+              <Text style={styles.userRole}>{user?.phone}</Text>
+              {user?.isPinflVerified && (
+                <View style={styles.verifiedRow}>
+                  <Ionicons name="checkmark-circle" size={13} color="#A7F3D0" />
+                  <Text style={styles.verifiedText}>MyID верифицирован</Text>
+                </View>
+              )}
+            </View>
+            <TouchableOpacity
+              style={styles.editBtn}
+              onPress={() => router.push({ pathname: '/profile/edit' } as any)}
+            >
+              <Ionicons name="create-outline" size={18} color="#FFFFFF" />
+            </TouchableOpacity>
           </View>
-          <Text style={styles.userName}>{user?.name}</Text>
-          <Text style={styles.userRole}>{user?.phone}</Text>
 
           {/* Мини-статистика */}
           <View style={styles.statsRow}>
@@ -189,12 +205,10 @@ export default function ProfileScreen() {
               <Text style={styles.statNum}>{bookings.filter(b => b.renterId === user?.id).length}</Text>
               <Text style={styles.statLabel}>Аренд</Text>
             </View>
-            <View style={styles.statDivider} />
             <View style={styles.statBox}>
               <Text style={styles.statNum}>{bookings.filter(b => b.ownerId === user?.id).length}</Text>
               <Text style={styles.statLabel}>Сдано</Text>
             </View>
-            <View style={styles.statDivider} />
             <View style={styles.statBox}>
               <Text style={styles.statNum}>{(user as any)?.rating?.toFixed(1) ?? '5.0'}</Text>
               <Text style={styles.statLabel}>Рейтинг</Text>
@@ -288,34 +302,47 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { flex: 1, backgroundColor: '#F7F7F5' },
   profileHeader: {
-    alignItems: 'center',
-    paddingTop: 30,
+    paddingTop: 24,
     paddingBottom: 24,
     paddingHorizontal: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    backgroundColor: Colors.primary,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
     marginBottom: 0,
   },
+  profileTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginBottom: 20,
+  },
   avatar: {
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: Colors.primary,
+    width: 68, height: 68, borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center', alignItems: 'center',
-    marginBottom: 12,
   },
-  userName: { fontSize: 22, fontWeight: '900', color: Colors.text },
-  userRole: { fontSize: 13, color: '#94A3B8', marginTop: 4, marginBottom: 20 },
+  userName: { fontSize: 20, fontWeight: '900', color: '#FFFFFF' },
+  userRole: { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
+  verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  verifiedText: { fontSize: 12, color: '#A7F3D0', fontWeight: '600' },
+  editBtn: {
+    width: 38, height: 38, borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center', alignItems: 'center',
+  },
   statsRow: {
-    flexDirection: 'row', backgroundColor: '#F8FAFC',
-    borderRadius: 18, paddingVertical: 16, paddingHorizontal: 24,
-    borderWidth: 1, borderColor: '#F1F5F9', gap: 0,
+    flexDirection: 'row', gap: 10,
   },
-  statBox: { flex: 1, alignItems: 'center' },
-  statNum: { fontSize: 20, fontWeight: '900', color: Colors.text },
-  statLabel: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
-  statDivider: { width: 1, backgroundColor: '#F1F5F9', marginHorizontal: 8 },
+  statBox: {
+    flex: 1, alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 14,
+    paddingVertical: 12,
+  },
+  statNum: { fontSize: 20, fontWeight: '900', color: '#FFFFFF' },
+  statLabel: { fontSize: 11, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
   verifyBanner: {
     backgroundColor: Colors.primary,
     margin: 16, borderRadius: 20, padding: 16,

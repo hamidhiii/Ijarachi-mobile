@@ -179,16 +179,51 @@ export default function ProductDetail() {
     const daysCount = useMemo(() => Object.keys(range.markedDates).length || 1, [range.markedDates]);
     const totalAmount = daysCount * priceNum * (isSizeCategory ? 1 : quantity);
 
+    const rating = product.rating ?? 4.8;
+    const reviewCount = product.reviewCount ?? 0;
+
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
             <StatusBar barStyle="dark-content" />
             <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
-                <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}><Ionicons name="chevron-back" size={24} color={Colors.text} /></TouchableOpacity>
-                <Image source={product.image} style={styles.mainImage} />
+                <View style={styles.imageWrap}>
+                    <Image source={product.image} style={styles.mainImage} />
+                    <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+                        <Ionicons name="chevron-back" size={22} color={Colors.text} />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.heartBtn}>
+                        <Ionicons name="heart-outline" size={20} color={Colors.text} />
+                    </TouchableOpacity>
+                </View>
 
                 <View style={{ padding: 20 }}>
-                    <Text style={styles.title}>{product.title}</Text>
-                    <Text style={styles.price}>{product.price} <Text style={styles.perDay}>/ день</Text></Text>
+                    <View style={styles.titleRow}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.title}>{product.title}</Text>
+                            <View style={styles.ratingRow}>
+                                <Ionicons name="star" size={14} color="#F59E0B" />
+                                <Text style={styles.ratingNum}>{rating.toFixed(1)}</Text>
+                                {reviewCount > 0 && (
+                                    <Text style={styles.ratingReviews}>· {reviewCount} отзывов</Text>
+                                )}
+                            </View>
+                        </View>
+                        <View style={styles.priceBox}>
+                            <Text style={styles.price}>{product.priceNum.toLocaleString()}</Text>
+                            <Text style={styles.perDay}>сум / день</Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.badgesRow}>
+                        <View style={styles.locBadge}>
+                            <Ionicons name="location-outline" size={13} color={Colors.textMuted} />
+                            <Text style={styles.locBadgeText}>{product.location}</Text>
+                        </View>
+                        <View style={styles.availBadge}>
+                            <View style={styles.availDot} />
+                            <Text style={styles.availText}>Свободно сейчас</Text>
+                        </View>
+                    </View>
 
                     <View style={styles.divider} />
 
@@ -315,11 +350,44 @@ export default function ProductDetail() {
 }
 
 const styles = StyleSheet.create({
-    backBtn: { position: 'absolute', top: 50, left: 20, zIndex: 10, backgroundColor: '#FFFFFF', width: 45, height: 45, borderRadius: 15, justifyContent: 'center', alignItems: 'center', elevation: 5 },
-    mainImage: { width: width, height: 420, borderBottomLeftRadius: 35, borderBottomRightRadius: 35 },
-    title: { fontSize: 26, fontWeight: '900', color: '#000000' },
-    price: { fontSize: 22, fontWeight: '800', color: Colors.primary, marginTop: 5 },
-    perDay: { fontSize: 16, fontWeight: '400', color: '#64748B' },
+    imageWrap: { position: 'relative' },
+    backBtn: {
+        position: 'absolute', top: 50, left: 16, zIndex: 10,
+        backgroundColor: 'rgba(255,255,255,0.92)', width: 40, height: 40,
+        borderRadius: 13, justifyContent: 'center', alignItems: 'center',
+        shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
+    },
+    heartBtn: {
+        position: 'absolute', top: 50, right: 16, zIndex: 10,
+        backgroundColor: 'rgba(255,255,255,0.92)', width: 40, height: 40,
+        borderRadius: 13, justifyContent: 'center', alignItems: 'center',
+        shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
+    },
+    mainImage: { width: width, height: 360, borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
+    titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12 },
+    title: { fontSize: 22, fontWeight: '900', color: Colors.text, lineHeight: 28 },
+    ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
+    ratingNum: { fontSize: 13, fontWeight: '700', color: Colors.text },
+    ratingReviews: { fontSize: 13, color: Colors.textMuted },
+    priceBox: { alignItems: 'flex-end' },
+    price: { fontSize: 22, fontWeight: '900', color: Colors.primary },
+    perDay: { fontSize: 12, fontWeight: '500', color: Colors.textMuted },
+    badgesRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+    locBadge: {
+        flexDirection: 'row', alignItems: 'center', gap: 4,
+        backgroundColor: '#F7F7F5', borderRadius: 9,
+        paddingHorizontal: 10, paddingVertical: 5,
+    },
+    locBadgeText: { fontSize: 12, color: Colors.textMuted },
+    availBadge: {
+        flexDirection: 'row', alignItems: 'center', gap: 6,
+        backgroundColor: '#ECFDF5', borderRadius: 9,
+        paddingHorizontal: 10, paddingVertical: 5,
+    },
+    availDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#10B981' },
+    availText: { fontSize: 12, color: Colors.primary, fontWeight: '600' },
     divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 20 },
     sectionTitle: { fontSize: 18, fontWeight: '700', color: '#000000', marginBottom: 15 },
     description: { fontSize: 15, color: '#64748B', lineHeight: 22 },

@@ -8,46 +8,54 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarShowLabel: false,
-        tabBarActiveTintColor: Colors.secondary,
-        tabBarInactiveTintColor: 'rgba(255,255,255,0.55)',
+        tabBarShowLabel: true,
+        tabBarActiveTintColor: Colors.primary,
+        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: '600',
+          marginTop: 2,
+        },
         tabBarStyle: {
-          height: 90,
-          backgroundColor: Colors.primary,
-          borderTopLeftRadius: 30,
-          borderTopRightRadius: 30,
-          borderTopWidth: 0,
-          paddingBottom: Platform.OS === 'ios' ? 25 : 10,
-          elevation: 25,
+          height: 80,
+          backgroundColor: '#FFFFFF',
+          borderTopWidth: 1,
+          borderTopColor: '#EBEBEB',
+          paddingBottom: Platform.OS === 'ios' ? 20 : 10,
+          paddingTop: 6,
+          elevation: 8,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.2,
-          shadowRadius: 10,
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.04,
+          shadowRadius: 6,
         },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
+          tabBarLabel: 'Главная',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'home' : 'home-outline'} size={26} color={color} />
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="wishlist"
         options={{
+          tabBarLabel: 'Избранное',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'heart' : 'heart-outline'} size={26} color={color} />
+            <Ionicons name={focused ? 'heart' : 'heart-outline'} size={24} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="add"
         options={{
+          tabBarLabel: '',
           tabBarIcon: () => (
             <View style={styles.addBtn}>
-              <Ionicons name="add" size={32} color={Colors.text} />
+              <Ionicons name="add" size={24} color="#FFFFFF" />
             </View>
           ),
         }}
@@ -55,16 +63,18 @@ export default function TabLayout() {
       <Tabs.Screen
         name="chat"
         options={{
+          tabBarLabel: 'Чаты',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'chatbubble' : 'chatbubble-outline'} size={26} color={color} />
+            <Ionicons name={focused ? 'chatbubble' : 'chatbubble-outline'} size={24} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
+          tabBarLabel: 'Профиль',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'person' : 'person-outline'} size={26} color={color} />
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
           ),
         }}
       />
@@ -74,19 +84,17 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   addBtn: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: Colors.secondary,
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: -40,
-    borderWidth: 5,
-    borderColor: '#FFFFFF',
-    elevation: 10,
-    shadowColor: '#000',
+    marginTop: -16,
+    elevation: 8,
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 5,
+    shadowRadius: 10,
   },
 });
