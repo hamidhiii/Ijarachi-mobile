@@ -1,11 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Modal,
+  Pressable,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -14,6 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import ProductCard from '../../components/ProductCard';
 import { Colors } from '../../constants/Colors';
 import { CATEGORIES } from '../../constants/data';
@@ -34,6 +37,24 @@ const CATEGORY_EMOJI: Record<string, string> = {
   electronics: '📷',
 };
 
+const LOCATION_KEY = 'rentoo_user_location';
+const LOCATIONS = [
+  'Ташкент, Чиланзар',
+  'Ташкент, Юнусабад',
+  'Ташкент, Мирабад',
+  'Ташкент, Яккасарай',
+  'Ташкент, Сергели',
+  'Ташкент, Учтепа',
+  'Ташкент, Бектемир',
+  'Ташкент, Шайхантахур',
+  'Самарканд',
+  'Бухара',
+  'Наманган',
+  'Андижан',
+  'Фергана',
+  'Нукус',
+];
+
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
@@ -42,6 +63,28 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [location, setLocation] = useState('Ташкент, Чиланзар');
+  const [locationPickerOpen, setLocationPickerOpen] = useState(false);
+  const [locationQuery, setLocationQuery] = useState('');
+
+  useEffect(() => {
+    AsyncStorage.getItem(LOCATION_KEY).then(saved => {
+      if (saved) setLocation(saved);
+    });
+  }, []);
+
+  const chooseLocation = useCallback(async (loc: string) => {
+    setLocation(loc);
+    setLocationPickerOpen(false);
+    setLocationQuery('');
+    try { await AsyncStorage.setItem(LOCATION_KEY, loc); } catch {}
+  }, []);
+
+  const filteredLocations = useMemo(() => {
+    const q = locationQuery.trim().toLowerCase();
+    if (!q) return LOCATIONS;
+    return LOCATIONS.filter(l => l.toLowerCase().includes(q));
+  }, [locationQuery]);
 
   const loadListings = useCallback(async () => {
     setLoading(true);
@@ -86,7 +129,7 @@ export default function HomeScreen() {
   const firstName = (user?.name || 'Гость').split(' ')[0];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="dark-content" />
 
       <ScrollView
@@ -106,10 +149,16 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View style={styles.headerTop}>
             <View style={{ flex: 1 }}>
-              <View style={styles.locRow}>
+              <TouchableOpacity
+                style={styles.locRow}
+                onPress={() => setLocationPickerOpen(true)}
+                activeOpacity={0.7}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              >
                 <Ionicons name="location" size={13} color={Colors.primary} />
-                <Text style={styles.locText}>Ташкент, Чиланзар</Text>
-              </View>
+                <Text style={styles.locText} numberOfLines={1}>{location}</Text>
+                <Ionicons name="chevron-down" size={14} color={Colors.textMuted} />
+              </TouchableOpacity>
               <Text style={styles.greeting}>Привет, {firstName} 👋</Text>
             </View>
             <TouchableOpacity
@@ -255,12 +304,66 @@ export default function HomeScreen() {
 
         <View style={{ height: 120 }} />
       </ScrollView>
+
+      {/* LOCATION PICKER */}
+      <Modal
+        visible={locationPickerOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setLocationPickerOpen(false)}
+      >
+        <Pressable style={styles.locBackdrop} onPress={() => setLocationPickerOpen(false)}>
+          <Pressable style={styles.locSheet} onPress={() => {}}>
+            <View style={styles.locHandle} />
+            <Text style={styles.locSheetTitle}>Выберите город</Text>
+
+            <View style={styles.locSearch}>
+              <Ionicons name="search-outline" size={16} color={Colors.textMuted} />
+              <TextInput
+                value={locationQuery}
+                onChangeText={setLocationQuery}
+                placeholder="Поиск города или района"
+                placeholderTextColor={Colors.textMuted}
+                style={styles.locSearchInput}
+                autoCorrect={false}
+              />
+            </View>
+
+            <ScrollView style={{ maxHeight: 380 }} keyboardShouldPersistTaps="handled">
+              {filteredLocations.length === 0 ? (
+                <Text style={styles.locEmpty}>Ничего не найдено</Text>
+              ) : (
+                filteredLocations.map(loc => {
+                  const active = loc === location;
+                  return (
+                    <TouchableOpacity
+                      key={loc}
+                      style={styles.locItem}
+                      onPress={() => chooseLocation(loc)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons
+                        name={active ? 'radio-button-on' : 'radio-button-off'}
+                        size={18}
+                        color={active ? Colors.primary : '#CBD5E1'}
+                      />
+                      <Text style={[styles.locItemText, active && styles.locItemTextActive]}>
+                        {loc}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F7F7F5' },
+  container: { flex: 1, flexDirection: 'column', backgroundColor: '#F7F7F5' },
   scroll: { paddingBottom: 10 },
 
   // Header
@@ -463,5 +566,63 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 14,
     fontWeight: '500',
+  },
+
+  // Location picker
+  locBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  locSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 30,
+  },
+  locHandle: {
+    alignSelf: 'center',
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#EBEBEB',
+    marginBottom: 14,
+  },
+  locSheetTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: Colors.text,
+    marginBottom: 14,
+  },
+  locSearch: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F7F7F5',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#EBEBEB',
+    paddingHorizontal: 14,
+    height: 44,
+    gap: 8,
+    marginBottom: 12,
+  },
+  locSearchInput: { flex: 1, fontSize: 14, color: Colors.text, padding: 0 },
+  locItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 13,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F7F7F5',
+  },
+  locItemText: { fontSize: 15, color: Colors.text, fontWeight: '500' },
+  locItemTextActive: { color: Colors.primary, fontWeight: '700' },
+  locEmpty: {
+    textAlign: 'center',
+    color: Colors.textMuted,
+    fontSize: 13,
+    paddingVertical: 30,
   },
 });
