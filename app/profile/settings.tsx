@@ -84,10 +84,12 @@ export default function SettingsScreen() {
                     <SettingItem
                         icon="person-outline"
                         title="Редактировать профиль"
+                        onPress={() => router.push('/profile/edit' as any)}
                     />
                     <SettingItem
                         icon="shield-checkmark-outline"
-                        title="Безопасность"
+                        title="Верификация MyID"
+                        onPress={() => router.push('/auth/myid' as any)}
                     />
                 </View>
 

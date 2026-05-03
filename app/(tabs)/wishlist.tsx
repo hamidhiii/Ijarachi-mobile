@@ -1,14 +1,31 @@
-import React from 'react';
-import { StyleSheet, Text, View, ScrollView, SafeAreaView, StatusBar } from 'react-native';
-import { useWishlist } from '../../context/WishlistContext';
-import { ITEMS } from '../../constants/data';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import ProductCard from '../../components/ProductCard';
 import { Colors } from '../../constants/Colors';
-import { Ionicons } from '@expo/vector-icons';
+import { useWishlist } from '../../context/WishlistContext';
+import * as listingService from '../../services/listingService';
+import { Listing } from '../../types/listing.types';
 
 export default function WishlistScreen() {
   const { wishlist } = useWishlist();
-  const favoriteItems = ITEMS.filter(item => wishlist.includes(item.id));
+  const [items, setItems] = useState<Listing[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadItems = useCallback(async () => {
+    try {
+      const all = await listingService.getListings();
+      setItems(all.filter(item => wishlist.includes(item.id)));
+    } catch {
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [wishlist]);
+
+  useEffect(() => {
+    loadItems();
+  }, [loadItems]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -16,11 +33,15 @@ export default function WishlistScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Избранное</Text>
       </View>
-      
+
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {favoriteItems.length > 0 ? (
+        {loading ? (
+          <View style={styles.empty}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+          </View>
+        ) : items.length > 0 ? (
           <View style={styles.grid}>
-            {favoriteItems.map(item => <ProductCard key={item.id} item={item} />)}
+            {items.map(item => <ProductCard key={item.id} item={item} />)}
           </View>
         ) : (
           <View style={styles.empty}>

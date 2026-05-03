@@ -14,7 +14,7 @@ export interface Listing {
     category: string;
     categoryType: CategoryType;
     location: string;
-    image: any;
+    image: { uri: string } | number;
     description: string;
     seller: ListingSeller;
     availableSizes?: string[];

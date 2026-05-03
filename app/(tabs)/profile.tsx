@@ -211,7 +211,7 @@ export default function ProfileScreen() {
               <Text style={styles.statLabel}>Сдано</Text>
             </View>
             <View style={styles.statBox}>
-              <Text style={styles.statNum}>{(user as any)?.rating?.toFixed(1) ?? '5.0'}</Text>
+              <Text style={styles.statNum}>{user?.rating?.toFixed(1) ?? '5.0'}</Text>
               <Text style={styles.statLabel}>Рейтинг</Text>
             </View>
           </View>
@@ -219,7 +219,7 @@ export default function ProfileScreen() {
 
         {/* PINFL Verification Banner */}
         {!user?.isPinflVerified && (
-          <TouchableOpacity style={styles.verifyBanner} activeOpacity={0.9}>
+          <TouchableOpacity style={styles.verifyBanner} activeOpacity={0.9} onPress={() => router.push('/auth/myid' as any)}>
             <View style={styles.verifyIconBox}>
               <Ionicons name="shield-checkmark" size={24} color="#fff" />
             </View>

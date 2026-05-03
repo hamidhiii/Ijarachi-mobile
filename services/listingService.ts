@@ -68,7 +68,7 @@ export async function createListing(
         category: data.category || '',
         categoryType: data.categoryType || 'quantity',
         location: data.location || 'Ташкент',
-        image: data.image,
+        image: data.image ?? { uri: '' },
         description: data.description || '',
         seller: seller
             ? { id: seller.id, name: seller.name, role: 'Арендодатель' }

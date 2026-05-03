@@ -1,17 +1,48 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React from 'react';
-import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
-import { ITEMS } from '../../constants/data';
+import * as listingService from '../../services/listingService';
+import { Listing } from '../../types/listing.types';
 
 export default function OrderSummary() {
   const router = useRouter();
 
-  // Получаем параметры из ProductDetail
   const { id, days, qty, startDate, endDate } = useLocalSearchParams();
 
-  const product = ITEMS.find(p => p.id === id) || ITEMS[0];
+  const [product, setProduct] = useState<Listing | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    listingService.getListingById(id as string).then(data => {
+      setProduct(data);
+    }).finally(() => setLoading(false));
+  }, [id]);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!product) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 }}>
+          <Text style={{ color: '#64748B', fontSize: 16 }}>Объявление не найдено</Text>
+          <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 16 }}>
+            <Text style={{ color: Colors.primary, fontWeight: '700' }}>Назад</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   const daysCount = parseInt(days as string) || 1;
   const quantity = parseInt(qty as string) || 1;
   const pricePerDay =

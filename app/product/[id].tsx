@@ -1,14 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Dimensions, Image, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, Image, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { SellerCard } from '../../components/SellerCard';
 import QuantitySelector from '../../components/listing/QuantitySelector';
 import SizeSelector from '../../components/listing/SizeSelector';
 import { Colors } from '../../constants/Colors';
-import { ITEMS } from '../../constants/data';
 import { useAuth } from '../../context/AuthContext';
+import { useWishlist } from '../../context/WishlistContext';
+import * as listingService from '../../services/listingService';
 import { Listing } from '../../types/listing.types';
 
 let DateTimePicker: any;
@@ -22,9 +23,18 @@ export default function ProductDetail() {
     const router = useRouter();
     const { id } = useLocalSearchParams();
     const { isLoggedIn } = useAuth();
+    const { wishlist, toggleWishlist } = useWishlist();
 
-    const product = (ITEMS.find(p => p.id === id) || ITEMS[0]) as Listing;
-    const priceNum = product.priceNum;
+    const [product, setProduct] = useState<Listing | null>(null);
+    const [loadingProduct, setLoadingProduct] = useState(true);
+
+    useEffect(() => {
+        listingService.getListingById(id as string).then(data => {
+            setProduct(data);
+        }).catch(() => {
+            setProduct(null);
+        }).finally(() => setLoadingProduct(false));
+    }, [id]);
 
     const today = new Date().toISOString().split('T')[0];
 
@@ -37,7 +47,8 @@ export default function ProductDetail() {
     const [showStartPicker, setShowStartPicker] = useState(false);
     const [showEndPicker, setShowEndPicker] = useState(false);
 
-    const isSizeCategory = product.categoryType === 'size';
+    const priceNum = product?.priceNum ?? 0;
+    const isSizeCategory = product?.categoryType === 'size';
 
     const formatTime = (date: Date) => {
         return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
@@ -75,8 +86,8 @@ export default function ProductDetail() {
     };
 
     const blockedDatesObj = useMemo(() => {
-        const obj: any = {};
-        (product.blockedDates || []).forEach(date => {
+        const obj: Record<string, object> = {};
+        (product?.blockedDates || []).forEach(date => {
             obj[date] = {
                 disabled: true,
                 disableTouchEvent: true,
@@ -84,10 +95,10 @@ export default function ProductDetail() {
             };
         });
         return obj;
-    }, [product.blockedDates]);
+    }, [product?.blockedDates]);
 
     useEffect(() => {
-        if (product.blockedDates) {
+        if (product?.blockedDates) {
             setRange(prev => ({
                 ...prev,
                 markedDates: { ...prev.markedDates, ...blockedDatesObj }
@@ -98,8 +109,7 @@ export default function ProductDetail() {
     const handleDayPress = (day: any) => {
         const dateStr = day.dateString;
 
-        // Если дата заблокирована - ничего не делаем
-        if (product.blockedDates?.includes(dateStr)) return;
+        if (product?.blockedDates?.includes(dateStr)) return;
 
         if (!range.start || (range.start !== range.end)) {
             setRange({
@@ -126,7 +136,7 @@ export default function ProductDetail() {
             let checkDate = new Date(start);
             let hasBlocked = false;
             while (checkDate <= end) {
-                if (product.blockedDates?.includes(checkDate.toISOString().split('T')[0])) {
+                if (product?.blockedDates?.includes(checkDate.toISOString().split('T')[0])) {
                     hasBlocked = true;
                     break;
                 }
@@ -179,8 +189,31 @@ export default function ProductDetail() {
     const daysCount = useMemo(() => Object.keys(range.markedDates).length || 1, [range.markedDates]);
     const totalAmount = daysCount * priceNum * (isSizeCategory ? 1 : quantity);
 
-    const rating = product.rating ?? 4.8;
-    const reviewCount = product.reviewCount ?? 0;
+    const rating = product?.rating ?? 4.8;
+    const reviewCount = product?.reviewCount ?? 0;
+    const isWishlisted = product ? wishlist.includes(product.id) : false;
+
+    if (loadingProduct) {
+        return (
+            <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+            </SafeAreaView>
+        );
+    }
+
+    if (!product) {
+        return (
+            <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', padding: 40 }}>
+                <Ionicons name="alert-circle-outline" size={60} color="#CBD5E1" />
+                <Text style={{ fontSize: 16, color: '#64748B', textAlign: 'center', marginTop: 16 }}>
+                    Объявление не найдено или было удалено
+                </Text>
+                <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 20 }}>
+                    <Text style={{ color: Colors.primary, fontWeight: '700' }}>Назад</Text>
+                </TouchableOpacity>
+            </SafeAreaView>
+        );
+    }
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
@@ -191,8 +224,12 @@ export default function ProductDetail() {
                     <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
                         <Ionicons name="chevron-back" size={22} color={Colors.text} />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.heartBtn}>
-                        <Ionicons name="heart-outline" size={20} color={Colors.text} />
+                    <TouchableOpacity style={styles.heartBtn} onPress={() => toggleWishlist(product.id)}>
+                        <Ionicons
+                            name={isWishlisted ? 'heart' : 'heart-outline'}
+                            size={20}
+                            color={isWishlisted ? '#EF4444' : Colors.text}
+                        />
                     </TouchableOpacity>
                 </View>
 
@@ -227,7 +264,6 @@ export default function ProductDetail() {
 
                     <View style={styles.divider} />
 
-                    {/* SELECTORS Section */}
                     {isSizeCategory ? (
                         <SizeSelector
                             availableSizes={product.availableSizes || []}

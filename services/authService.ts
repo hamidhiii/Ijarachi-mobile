@@ -16,7 +16,7 @@ export const MOCK_USER: User = {
 export async function sendOTP(phone: string): Promise<boolean> {
     if (MOCK_MODE) {
         const code = Math.floor(100000 + Math.random() * 900000).toString();
-        console.log(`[AUTH mock] OTP for ${phone}: ${code}`);
+        if (__DEV__) console.log(`[AUTH mock] OTP for ${phone}: ${code}`);
         await _delay(800);
         return true;
     }
@@ -30,7 +30,7 @@ export async function verifyOTP(
     code: string
 ): Promise<{ user: User; token: string; refreshToken?: string }> {
     if (MOCK_MODE) {
-        console.log(`[AUTH mock] Verifying OTP ${code} for ${phone}`);
+        if (__DEV__) console.log(`[AUTH mock] Verifying OTP ${code} for ${phone}`);
         await _delay(800);
         return {
             user: { ...MOCK_USER, phone },
@@ -49,7 +49,7 @@ export async function register(
     userData: Partial<User>
 ): Promise<{ user: User; token: string; refreshToken?: string }> {
     if (MOCK_MODE) {
-        console.log(`[AUTH mock] Registering user ${userData.phone}`);
+        if (__DEV__) console.log(`[AUTH mock] Registering user ${userData.phone}`);
         await _delay(800);
         return {
             user: { ...MOCK_USER, ...userData } as User,

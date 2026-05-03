@@ -1,7 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const WishlistContext = createContext<any>(null);
+interface WishlistContextType {
+  wishlist: string[];
+  toggleWishlist: (id: string) => Promise<void>;
+}
+
+const WishlistContext = createContext<WishlistContextType | null>(null);
 
 export const WishlistProvider = ({ children }: { children: React.ReactNode }) => {
   const [wishlist, setWishlist] = useState<string[]>([]);
@@ -33,4 +38,10 @@ export const WishlistProvider = ({ children }: { children: React.ReactNode }) =>
   );
 };
 
-export const useWishlist = () => useContext(WishlistContext);
+export const useWishlist = () => {
+  const context = useContext(WishlistContext);
+  if (!context) {
+    throw new Error('useWishlist must be used within a WishlistProvider');
+  }
+  return context;
+};
