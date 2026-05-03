@@ -1,8 +1,8 @@
+import { apiRequest, MOCK_MODE } from '../api/client';
 import { ITEMS } from '../constants/data';
 import { Listing } from '../types/listing.types';
 import { User } from '../types/user.types';
 
-// Мок пользователей для публичных профилей
 const MOCK_SELLERS: Record<string, User> = {
     'user_alice': {
         id: 'user_alice',
@@ -24,14 +24,18 @@ const MOCK_SELLERS: Record<string, User> = {
     }
 };
 
-/** Получить публичный профиль пользователя */
 export async function getUserProfile(userId: string): Promise<User | null> {
+    if (!MOCK_MODE) {
+        return apiRequest<User>('GET', `/users/${encodeURIComponent(userId)}`);
+    }
     await _delay(300);
     return MOCK_SELLERS[userId] || null;
 }
 
-/** Получить объявления конкретного пользователя */
 export async function getUserListings(userId: string): Promise<Listing[]> {
+    if (!MOCK_MODE) {
+        return apiRequest<Listing[]>('GET', `/users/${encodeURIComponent(userId)}/listings`);
+    }
     await _delay(400);
     return ITEMS.filter(item => item.seller.id === userId) as Listing[];
 }

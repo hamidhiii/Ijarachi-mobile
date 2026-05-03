@@ -1,28 +1,33 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
-import { ITEMS } from '../../constants/data';
 import { useAuth } from '../../context/AuthContext';
 import { chatService } from '../../services/chatService';
+import * as listingService from '../../services/listingService';
 import { createBooking } from '../../services/rentalService';
+import { Listing } from '../../types/listing.types';
 
 export default function PaymentScreen() {
   const router = useRouter();
   const { amount, itemId, startDate, endDate, days } = useLocalSearchParams();
   const [method, setMethod] = useState<'click' | 'payme' | null>(null);
   const [loading, setLoading] = useState(false);
+  const [product, setProduct] = useState<Listing | null>(null);
 
-  // Используем реальное состояние авторизации
   const { isLoggedIn, user } = useAuth();
   const isGuest = !isLoggedIn;
+
+  useEffect(() => {
+    listingService.getListingById(itemId as string).then(setProduct);
+  }, [itemId]);
 
   const handleFinish = async () => {
     if (isGuest) {
       Alert.alert(
         'Нужна авторизация',
-        'Пожалуйста, войдите в аккаунт или зарегистрируйтесь, чтобы продолжить бронирование.',
+        'Войдите в аккаунт, чтобы продолжить бронирование.',
         [
           { text: 'Отмена', style: 'cancel' },
           { text: 'Войти', onPress: () => router.push('/auth/login') }
@@ -31,45 +36,50 @@ export default function PaymentScreen() {
       return;
     }
 
+    if (!product) {
+      Alert.alert('Ошибка', 'Объявление не найдено.');
+      return;
+    }
+
     setLoading(true);
 
-    // Имитация оплаты (в разработке — просто переходим дальше)
-    await new Promise((r) => setTimeout(r, 800));
+    try {
+      const daysNum = parseInt(days as string) || 1;
+      const totalAmt = parseInt((amount as string)?.replace(/[^0-9]/g, '')) || 0;
 
-    const product = ITEMS.find((p) => p.id === itemId) || ITEMS[0];
-    const daysNum = parseInt(days as string) || 1;
-    const totalAmt = parseInt((amount as string)?.replace(/[^0-9]/g, '')) || 0;
+      const booking = await createBooking({
+        itemId: itemId as string,
+        itemTitle: product.title,
+        itemImage: product.image,
+        itemPricePerDay: product.priceNum,
+        ownerId: product.seller.id,
+        ownerName: product.seller.name,
+        renterId: user?.id ?? 'user_me',
+        renterName: user?.name ?? 'Вы',
+        startDate: (startDate as string) || new Date().toISOString().split('T')[0],
+        endDate: (endDate as string) || new Date().toISOString().split('T')[0],
+        totalDays: daysNum,
+        totalAmount: totalAmt,
+        status: 'confirmed',
+      });
 
-    const booking = await createBooking({
-      itemId: itemId as string,
-      itemTitle: product.title,
-      itemImage: product.image,
-      itemPricePerDay: parseInt(product.price.replace(/[^0-9]/g, '')),
-      ownerId: (product as any).seller?.id ?? 'user_alice',
-      ownerName: (product as any).seller?.name ?? 'Алина',
-      renterId: user?.id ?? 'user_me',
-      renterName: user?.name ?? 'Вы',
-      startDate: (startDate as string) || new Date().toISOString().split('T')[0],
-      endDate: (endDate as string) || new Date().toISOString().split('T')[0],
-      totalDays: daysNum,
-      totalAmount: totalAmt,
-      status: 'confirmed',
-    });
+      await chatService.sendMessage({
+        recipientId: booking.ownerId,
+        type: 'rental_request',
+        bookingId: booking.id,
+        text: `Новый заказ: ${booking.itemTitle}. Курьер Rentoo свяжется с вами для передачи вещи.`
+      });
 
-    // АВТОМАТИЗАЦИЯ: Отправляем уведомление владельцу в чат
-    await chatService.sendMessage({
-      recipientId: booking.ownerId,
-      type: 'rental_request',
-      bookingId: booking.id,
-      text: `Новый заказ: ${booking.itemTitle}. Курьер Rentoo свяжется с вами для передачи вещи.`
-    });
-
-    setLoading(false);
-    Alert.alert(
-      'Заказ оформлен',
-      'Оплата прошла успешно. Курьер Rentoo свяжется с вами для передачи вещи.',
-      [{ text: 'ОК', onPress: () => router.replace('/(tabs)/profile') }]
-    );
+      setLoading(false);
+      Alert.alert(
+        'Заказ оформлен',
+        'Оплата прошла успешно. Курьер Rentoo свяжется с вами для передачи вещи.',
+        [{ text: 'ОК', onPress: () => router.replace('/(tabs)/profile') }]
+      );
+    } catch {
+      setLoading(false);
+      Alert.alert('Ошибка', 'Не удалось создать заказ. Попробуйте ещё раз.');
+    }
   };
 
   return (
@@ -123,7 +133,7 @@ export default function PaymentScreen() {
         >
           {loading
             ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.mainBtnText}>Оплатить {amount} сум (ДЕМО-ОБХОД)</Text>
+            : <Text style={styles.mainBtnText}>Оплатить {amount} сум</Text>
           }
         </TouchableOpacity>
       </View>

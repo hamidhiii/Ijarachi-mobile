@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Alert, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../context/AuthContext';
+import * as authService from '../../services/authService';
 
 export default function VerifyScreen() {
     const router = useRouter();
@@ -57,7 +58,17 @@ export default function VerifyScreen() {
                     )}
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.resendBtn} onPress={() => Alert.alert('Инфо', 'Код отправлен повторно')}>
+                <TouchableOpacity
+                    style={styles.resendBtn}
+                    onPress={async () => {
+                        try {
+                            await authService.sendOTP(phone as string);
+                            Alert.alert('Готово', 'Код отправлен повторно');
+                        } catch {
+                            Alert.alert('Ошибка', 'Не удалось отправить код');
+                        }
+                    }}
+                >
                     <Text style={styles.resendText}>Отправить код еще раз</Text>
                 </TouchableOpacity>
             </View>

@@ -1,62 +1,221 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { apiRequest, MOCK_MODE } from '../../api/client';
 import { Colors } from '../../constants/Colors';
+import { useAuth } from '../../context/AuthContext';
 
-export default function MyIdVerification() {
-  const router = useRouter();
-  const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
+export default function MyIdScreen() {
+    const router = useRouter();
+    const { user, updateUser } = useAuth();
 
-  const handleComplete = () => {
-    // После MyID-подтверждения ведём на вкладку профиля, где видны бронирования.
-    // bookingId пока не используется — оставлен на случай будущих шагов (напр. оплата).
-    void bookingId;
-    router.replace('/(tabs)/profile');
-  };
+    const [pinfl, setPinfl] = useState('');
+    const [passportSeries, setPassportSeries] = useState('');
+    const [loading, setLoading] = useState(false);
 
-  return (
-    <View style={styles.container}>
-      <Image source={{ uri: 'https://myid.uz/static/img/myid-logo.png' }} style={styles.logo} resizeMode="contain" />
-      <Text style={styles.title}>Идентификация личности</Text>
-      <Text style={styles.sub}>Чтобы сдавать или арендовать вещи, нам нужно подтвердить вашу личность через систему MyID.</Text>
+    const pinflClean = pinfl.replace(/\D/g, '');
+    const seriesClean = passportSeries.trim().toUpperCase();
+    const isValid = pinflClean.length === 14 && seriesClean.length >= 7;
 
-      <View style={styles.testBadge}>
-        <Text style={styles.testText}>РЕЖИМ ТЕСТИРОВАНИЯ</Text>
-      </View>
+    const handleVerify = async () => {
+        if (!isValid) {
+            Alert.alert('Проверьте данные', 'Введите корректный ПИНФЛ (14 цифр) и серию паспорта.');
+            return;
+        }
+        setLoading(true);
+        try {
+            if (!MOCK_MODE) {
+                await apiRequest('POST', '/auth/myid/verify', {
+                    pinfl: pinflClean,
+                    passportSeries: seriesClean,
+                    userId: user?.id,
+                });
+            } else {
+                await new Promise(r => setTimeout(r, 1200));
+            }
+            await updateUser({ isPinflVerified: true });
+            Alert.alert(
+                'Верификация пройдена',
+                'Ваша личность подтверждена. Теперь вы можете сдавать вещи в аренду.',
+                [{ text: 'Отлично', onPress: () => router.back() }]
+            );
+        } catch {
+            Alert.alert(
+                'Ошибка верификации',
+                'Не удалось подтвердить личность. Проверьте данные и попробуйте ещё раз.'
+            );
+        } finally {
+            setLoading(false);
+        }
+    };
 
-      <TouchableOpacity style={styles.btn} onPress={handleComplete}>
-        <Text style={styles.btnText}>Пройти идентификацию (Симуляция)</Text>
-      </TouchableOpacity>
+    return (
+        <SafeAreaView style={styles.container}>
+            <KeyboardAvoidingView
+                style={{ flex: 1 }}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            >
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+                        <Ionicons name="chevron-back" size={24} color={Colors.text} />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Верификация MyID</Text>
+                    <View style={{ width: 40 }} />
+                </View>
 
-      <TouchableOpacity style={[styles.btn, { backgroundColor: Colors.secondary, marginTop: 10 }]} onPress={handleComplete}>
-        <Text style={styles.btnText}>Bypass MyID (Мгновенно)</Text>
-      </TouchableOpacity>
+                <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+                    <View style={styles.bannerBox}>
+                        <View style={styles.iconCircle}>
+                            <Ionicons name="shield-checkmark" size={48} color={Colors.primary} />
+                        </View>
+                        <Text style={styles.bannerTitle}>Подтвердите личность</Text>
+                        <Text style={styles.bannerText}>
+                            Для сдачи вещей в аренду требуется верификация через систему MyID.
+                            Данные проверяются по базе ПИНФЛ Узбекистана.
+                        </Text>
+                    </View>
 
-      <TouchableOpacity onPress={() => router.replace('/')}>
-        <Text style={styles.skip}>Отмена</Text>
-      </TouchableOpacity>
-    </View>
-  );
+                    <View style={styles.chipsRow}>
+                        <View style={styles.chip}>
+                            <Ionicons name="lock-closed-outline" size={14} color={Colors.primary} />
+                            <Text style={styles.chipText}>Данные защищены</Text>
+                        </View>
+                        <View style={styles.chip}>
+                            <Ionicons name="time-outline" size={14} color={Colors.primary} />
+                            <Text style={styles.chipText}>~10 сек</Text>
+                        </View>
+                        <View style={styles.chip}>
+                            <Ionicons name="checkmark-circle-outline" size={14} color={Colors.primary} />
+                            <Text style={styles.chipText}>Одноразово</Text>
+                        </View>
+                    </View>
+
+                    <Text style={styles.label}>ПИНФЛ (14 цифр)</Text>
+                    <View style={styles.inputWrapper}>
+                        <Ionicons name="card-outline" size={20} color="#94A3B8" style={styles.inputIcon} />
+                        <TextInput
+                            style={styles.input}
+                            value={pinfl}
+                            onChangeText={v => setPinfl(v.replace(/\D/g, '').slice(0, 14))}
+                            placeholder="12345678901234"
+                            placeholderTextColor="#94A3B8"
+                            keyboardType="number-pad"
+                            maxLength={14}
+                            returnKeyType="next"
+                        />
+                        {pinflClean.length === 14 && (
+                            <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                        )}
+                    </View>
+                    <Text style={styles.hint}>Указан в паспорте или свидетельстве о рождении</Text>
+
+                    <Text style={[styles.label, { marginTop: 20 }]}>Серия и номер паспорта</Text>
+                    <View style={styles.inputWrapper}>
+                        <Ionicons name="document-outline" size={20} color="#94A3B8" style={styles.inputIcon} />
+                        <TextInput
+                            style={styles.input}
+                            value={passportSeries}
+                            onChangeText={setPassportSeries}
+                            placeholder="AA1234567"
+                            placeholderTextColor="#94A3B8"
+                            autoCapitalize="characters"
+                            maxLength={9}
+                            returnKeyType="done"
+                        />
+                        {seriesClean.length >= 7 && (
+                            <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                        )}
+                    </View>
+                    <Text style={styles.hint}>Серия и номер без пробелов (например: AA1234567)</Text>
+
+                    <View style={styles.privacyBox}>
+                        <Ionicons name="information-circle-outline" size={16} color="#64748B" />
+                        <Text style={styles.privacyText}>
+                            Rentoo не хранит паспортные данные. Проверка выполняется через защищённый API MyID.
+                        </Text>
+                    </View>
+                </ScrollView>
+
+                <View style={styles.footer}>
+                    <TouchableOpacity
+                        style={[styles.submitBtn, (!isValid || loading) && styles.submitBtnDisabled]}
+                        onPress={handleVerify}
+                        disabled={!isValid || loading}
+                        activeOpacity={0.85}
+                    >
+                        {loading ? (
+                            <ActivityIndicator color="#fff" />
+                        ) : (
+                            <>
+                                <Ionicons name="shield-checkmark-outline" size={20} color="#fff" />
+                                <Text style={styles.submitBtnText}>Подтвердить через MyID</Text>
+                            </>
+                        )}
+                    </TouchableOpacity>
+                </View>
+            </KeyboardAvoidingView>
+        </SafeAreaView>
+    );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF', padding: 40, justifyContent: 'center', alignItems: 'center' },
-  logo: { width: 150, height: 60, marginBottom: 30 },
-  title: { fontSize: 22, fontWeight: '800', color: Colors.text, textAlign: 'center' },
-  sub: { fontSize: 14, color: '#64748B', textAlign: 'center', marginTop: 15, lineHeight: 22 },
-  btn: { backgroundColor: '#0055BB', width: '100%', padding: 18, borderRadius: 15, marginTop: 40 },
-  btnText: { color: '#FFFFFF', textAlign: 'center', fontWeight: '700' },
-  skip: { marginTop: 20, color: '#64748B' },
-  testBadge: {
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 8,
-    marginTop: 25,
-  },
-  testText: {
-    color: '#D97706',
-    fontSize: 10,
-    fontWeight: '800',
-  }
+    container: { flex: 1, backgroundColor: '#FFFFFF' },
+    header: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        padding: 15, borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    },
+    backBtn: { width: 40, height: 40, justifyContent: 'center' },
+    headerTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
+    scroll: { padding: 24, paddingBottom: 40 },
+    bannerBox: { alignItems: 'center', marginBottom: 28 },
+    iconCircle: {
+        width: 96, height: 96, borderRadius: 28,
+        backgroundColor: '#ECFDF5',
+        justifyContent: 'center', alignItems: 'center',
+        marginBottom: 18,
+    },
+    bannerTitle: { fontSize: 22, fontWeight: '900', color: Colors.text, marginBottom: 10 },
+    bannerText: { fontSize: 14, color: '#64748B', textAlign: 'center', lineHeight: 22, maxWidth: 300 },
+    chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 32, justifyContent: 'center' },
+    chip: {
+        flexDirection: 'row', alignItems: 'center', gap: 5,
+        backgroundColor: '#ECFDF5', borderRadius: 20,
+        paddingHorizontal: 12, paddingVertical: 6,
+    },
+    chipText: { fontSize: 12, fontWeight: '600', color: Colors.primary },
+    label: { fontSize: 13, fontWeight: '600', color: '#64748B', marginBottom: 8 },
+    inputWrapper: {
+        flexDirection: 'row', alignItems: 'center',
+        backgroundColor: '#F8FAFC', borderWidth: 1.5, borderColor: '#E2E8F0',
+        borderRadius: 14, paddingHorizontal: 14, height: 54,
+    },
+    inputIcon: { marginRight: 10 },
+    input: { flex: 1, fontSize: 16, color: Colors.text, letterSpacing: 1 },
+    hint: { fontSize: 12, color: '#94A3B8', marginTop: 6, marginBottom: 4 },
+    privacyBox: {
+        flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+        backgroundColor: '#F8FAFC', borderRadius: 14,
+        padding: 14, marginTop: 28,
+    },
+    privacyText: { flex: 1, fontSize: 12, color: '#64748B', lineHeight: 18 },
+    footer: { padding: 20, paddingBottom: 30, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
+    submitBtn: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+        backgroundColor: Colors.primary, height: 56, borderRadius: 16,
+    },
+    submitBtnDisabled: { backgroundColor: '#CBD5E1' },
+    submitBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

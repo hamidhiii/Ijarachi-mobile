@@ -28,7 +28,7 @@
       "package": "com.zinvo.rentoo",
       "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#0a7ea4",
+        "backgroundColor": "#065F46",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"

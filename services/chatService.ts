@@ -1,3 +1,4 @@
+import { apiRequest, MOCK_MODE } from '../api/client';
 import { CURRENT_USER_ID } from '../mocks/bookings';
 import { MOCK_CONVERSATIONS, MOCK_MESSAGES } from '../mocks/chat';
 import { ChatMessage, Conversation } from '../types/rental.types';
@@ -7,10 +8,16 @@ class ChatService {
     private messages: Record<string, ChatMessage[]> = { ...MOCK_MESSAGES };
 
     async getConversations(): Promise<Conversation[]> {
+        if (!MOCK_MODE) {
+            return apiRequest<Conversation[]>('GET', '/conversations');
+        }
         return this.conversations;
     }
 
     async getMessages(conversationId: string): Promise<ChatMessage[]> {
+        if (!MOCK_MODE) {
+            return apiRequest<ChatMessage[]>('GET', `/conversations/${encodeURIComponent(conversationId)}/messages`);
+        }
         return this.messages[conversationId] || [];
     }
 
@@ -21,10 +28,13 @@ class ChatService {
         text?: string;
         bookingId?: string;
     }): Promise<ChatMessage> {
+        if (!MOCK_MODE) {
+            return apiRequest<ChatMessage>('POST', '/messages', params);
+        }
+
         let convId = params.conversationId;
 
         if (!convId) {
-            // Ищем или создаем беседу
             const existing = this.conversations.find(c =>
                 c.participants.some(p => p.id === params.recipientId)
             );
@@ -36,7 +46,7 @@ class ChatService {
                     id: convId,
                     participants: [
                         { id: CURRENT_USER_ID, name: 'Вы' },
-                        { id: params.recipientId, name: 'Пользователь' } // В идеале тянуть имя
+                        { id: params.recipientId, name: 'Пользователь' }
                     ],
                     unreadCount: 0,
                     updatedAt: new Date().toISOString()
@@ -59,7 +69,6 @@ class ChatService {
         if (!this.messages[convId!]) this.messages[convId!] = [];
         this.messages[convId!].push(newMessage);
 
-        // Обновляем беседу
         const convIndex = this.conversations.findIndex(c => c.id === convId);
         if (convIndex > -1) {
             this.conversations[convIndex].lastMessage = newMessage;
