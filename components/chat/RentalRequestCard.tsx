@@ -3,6 +3,7 @@ import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { Booking } from '../../types/rental.types';
+import VerifiedBadge from '../VerifiedBadge';
 
 interface RentalRequestCardProps {
     booking: Booking;
@@ -10,6 +11,8 @@ interface RentalRequestCardProps {
 }
 
 export default function RentalRequestCard({ booking, isOwner }: RentalRequestCardProps) {
+    const isDelivery = booking.deliveryMethod === 'yandex_delivery';
+
     return (
         <View style={styles.card}>
             <View style={styles.header}>
@@ -21,7 +24,10 @@ export default function RentalRequestCard({ booking, isOwner }: RentalRequestCar
                 <Image source={booking.itemImage} style={styles.image} />
                 <View style={styles.info}>
                     <Text style={styles.title} numberOfLines={2}>{booking.itemTitle}</Text>
-                    <Text style={styles.renterName}>От: {booking.renterName}</Text>
+                    <View style={styles.personRow}>
+                        <Text style={styles.renterName}>От: {booking.renterName}</Text>
+                        {booking.renterVerified && <VerifiedBadge compact />}
+                    </View>
                 </View>
             </View>
 
@@ -38,7 +44,22 @@ export default function RentalRequestCard({ booking, isOwner }: RentalRequestCar
                     <Ionicons name="cash-outline" size={14} color="#64748B" />
                     <Text style={styles.detailText}>{booking.totalAmount.toLocaleString()} сум</Text>
                 </View>
+                <View style={styles.detailItem}>
+                    <Ionicons name={isDelivery ? 'cube-outline' : 'walk-outline'} size={14} color="#64748B" />
+                    <Text style={styles.detailText}>
+                        {isDelivery
+                            ? `Yandex Доставка${booking.yandexEtaMinutes ? `, ETA ~${booking.yandexEtaMinutes} мин` : ''}`
+                            : `Самовывоз${booking.pickupDistrict ? `, ${booking.pickupDistrict}` : ''}`}
+                    </Text>
+                </View>
             </View>
+
+            {booking.ownerVerified && booking.renterVerified && (
+                <View style={styles.trustRow}>
+                    <Ionicons name="shield-checkmark" size={14} color={Colors.primary} />
+                    <Text style={styles.trustText}>Обе стороны верифицированы через MyID</Text>
+                </View>
+            )}
 
             <View style={styles.statusBox}>
                 <Text style={styles.statusText}>
@@ -73,16 +94,27 @@ const styles = StyleSheet.create({
     image: { width: 60, height: 60, borderRadius: 12 },
     info: { flex: 1, justifyContent: 'center', gap: 4 },
     title: { fontSize: 14, fontWeight: '700', color: Colors.text },
+    personRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     renterName: { fontSize: 12, color: '#64748B' },
     detailsBox: {
         backgroundColor: '#F8FAFC',
         borderRadius: 12,
         padding: 12,
         gap: 8,
-        marginBottom: 16,
+        marginBottom: 12,
     },
     detailItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     detailText: { fontSize: 13, color: '#1E293B', fontWeight: '500' },
+    trustRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: '#ECFDF5',
+        borderRadius: 12,
+        padding: 10,
+        marginBottom: 10,
+    },
+    trustText: { flex: 1, fontSize: 11, color: Colors.primary, fontWeight: '700' },
     actions: { flexDirection: 'row', gap: 10 },
     btn: { flex: 1, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
     acceptBtn: { backgroundColor: Colors.primary },

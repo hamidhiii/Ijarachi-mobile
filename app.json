@@ -18,10 +18,10 @@
       "buildNumber": "1",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSCameraUsageDescription": "Rentoo использует камеру, чтобы вы могли сфотографировать вещь для объявления и зафиксировать состояние при выдаче/возврате.",
+        "NSCameraUsageDescription": "Rentoo использует камеру, чтобы вы могли сфотографировать вещь для объявления.",
         "NSPhotoLibraryUsageDescription": "Rentoo запрашивает доступ к галерее, чтобы прикрепить фото вещи к объявлению.",
         "NSPhotoLibraryAddUsageDescription": "Rentoo сохраняет подтверждающие фото в галерею по вашему запросу.",
-        "NSLocationWhenInUseUsageDescription": "Rentoo показывает ваше местоположение арендодателю/арендатору для подтверждения передачи вещи."
+        "NSLocationWhenInUseUsageDescription": "Rentoo использует геолокацию для выбора адреса самовывоза или доставки."
       }
     },
     "android": {

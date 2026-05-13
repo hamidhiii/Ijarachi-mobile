@@ -53,7 +53,7 @@ export async function getListingById(id: string): Promise<Listing | null> {
 /** СОЗДАТЬ объявление */
 export async function createListing(
     data: Partial<Listing>,
-    seller?: { id: string; name: string }
+    seller?: { id: string; name: string; isVerified?: boolean }
 ): Promise<Listing> {
     if (!MOCK_MODE) {
         return apiRequest<Listing>('POST', '/listings', { ...data, sellerId: seller?.id });
@@ -71,8 +71,8 @@ export async function createListing(
         image: data.image ?? { uri: '' },
         description: data.description || '',
         seller: seller
-            ? { id: seller.id, name: seller.name, role: 'Арендодатель' }
-            : { id: 'user_me', name: 'Вы', role: 'Арендодатель' },
+            ? { id: seller.id, name: seller.name, role: 'Арендодатель', isVerified: seller.isVerified }
+            : { id: 'user_me', name: 'Вы', role: 'Арендодатель', isVerified: false },
         availableSizes: data.availableSizes ?? [],
         maxQuantity: data.maxQuantity ?? 1,
         unit: data.unit ?? 'шт',

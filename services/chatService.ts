@@ -46,7 +46,7 @@ class ChatService {
                     id: convId,
                     participants: [
                         { id: CURRENT_USER_ID, name: 'Вы' },
-                        { id: params.recipientId, name: 'Пользователь' }
+                        { id: params.recipientId, name: 'Пользователь', isVerified: false }
                     ],
                     unreadCount: 0,
                     updatedAt: new Date().toISOString()

@@ -296,6 +296,7 @@ export default function ProductDetail() {
                     <SellerCard
                         sellerName={product.seller.name}
                         sellerRole={product.seller.role}
+                        isVerified={product.seller.isVerified}
                         onPress={() => router.push(`/seller/${product.seller.id}` as any)}
                     />
 

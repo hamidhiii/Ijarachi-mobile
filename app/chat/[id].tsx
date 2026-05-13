@@ -14,6 +14,7 @@ import {
     View
 } from 'react-native';
 import RentalRequestCard from '../../components/chat/RentalRequestCard';
+import VerifiedBadge from '../../components/VerifiedBadge';
 import { Colors } from '../../constants/Colors';
 import { CURRENT_USER_ID } from '../../mocks/bookings';
 import { chatService } from '../../services/chatService';
@@ -106,7 +107,10 @@ export default function ChatDetailScreen() {
                 <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                     <Ionicons name="chevron-back" size={24} color={Colors.text} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>{participant?.name || 'Чат'}</Text>
+                <View style={styles.headerPerson}>
+                    <Text style={styles.headerTitle}>{participant?.name || 'Чат'}</Text>
+                    {participant?.isVerified && <VerifiedBadge compact />}
+                </View>
                 <View style={{ width: 40 }} />
             </View>
 
@@ -142,6 +146,7 @@ const styles = StyleSheet.create({
         padding: 15, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9'
     },
     backBtn: { width: 40, height: 40, justifyContent: 'center' },
+    headerPerson: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, flex: 1 },
     headerTitle: { fontSize: 18, fontWeight: '700', color: Colors.text },
     list: { padding: 15, gap: 10 },
     msgBubble: {

@@ -1,51 +1,72 @@
-// ─── Rental Types ────────────────────────────────────────────────────────────
-// Все типы, связанные с арендой и бронированием.
-// Физическую передачу вещей обеспечивают курьеры Rentoo (для одежды)
-// или выездная бригада (для мебели/техники) — поэтому никакого фотопротокола
-// от пользователя не требуется.
+// Rental domain types for booking, transfer method, and chat cards.
 
 export type UserRole = 'owner' | 'renter';
 
+export type DeliveryMethod = 'pickup' | 'yandex_delivery';
+
+export type YandexDeliveryStatus =
+  | 'created'
+  | 'courier_assigned'
+  | 'picked_up'
+  | 'in_transit'
+  | 'delivered'
+  | 'return_scheduled'
+  | 'return_in_transit'
+  | 'returned';
+
 export type BookingStatus =
-  | 'pending_payment'       // Оплата ещё не прошла (промежуточное)
-  | 'confirmed'             // Оплачено, курьер Rentoo назначен
-  | 'active'                // Вещь у арендатора, аренда идёт
-  | 'completed'             // Завершено успешно
-  | 'cancelled'             // Отменено
-  | 'in_dispute';           // Спор (на модерации Rentoo)
+  | 'pending_payment'
+  | 'confirmed'
+  | 'active'
+  | 'completed'
+  | 'cancelled'
+  | 'in_dispute';
 
 export interface Booking {
   id: string;
   itemId: string;
   itemTitle: string;
-  itemImage: any;             // require(...) или URL
-  itemPricePerDay: number;    // В сумах
+  itemImage: any;
+  itemPricePerDay: number;
 
   ownerId: string;
   ownerName: string;
+  ownerVerified?: boolean;
+  ownerPhone?: string;
+  ownerWorkingHours?: string;
 
   renterId: string;
   renterName: string;
+  renterVerified?: boolean;
 
-  startDate: string;          // YYYY-MM-DD
-  endDate: string;            // YYYY-MM-DD
+  startDate: string;
+  endDate: string;
   totalDays: number;
-  totalAmount: number;        // В сумах
+  rentAmount?: number;
+  totalAmount: number;
 
   status: BookingStatus;
+  deliveryMethod?: DeliveryMethod;
   deliveryLocation?: string;
+  deliveryAddress?: string;
+  deliveryComment?: string;
+  deliveryPrice?: number;
 
-  // Временные метки
+  pickupDistrict?: string;
+  pickupAddress?: string;
+
+  yandexOrderId?: string;
+  yandexStatus?: YandexDeliveryStatus;
+  yandexEtaMinutes?: number;
+
   createdAt: string;
-  confirmedAt?: string;       // Момент, когда курьер назначен
-  activatedAt?: string;       // Курьер передал вещь арендатору
-  completedAt?: string;       // Курьер забрал вещь обратно
+  confirmedAt?: string;
+  activatedAt?: string;
+  completedAt?: string;
   cancelledAt?: string;
   disputeOpenedAt?: string;
   disputeReason?: string;
 }
-
-// ─── Chat Types ─────────────────────────────────────────────────────────────
 
 export type MessageType = 'text' | 'rental_request';
 
@@ -55,7 +76,7 @@ export interface ChatMessage {
   senderId: string;
   type: MessageType;
   text?: string;
-  bookingId?: string; // Для сообщений типа rental_request
+  bookingId?: string;
   createdAt: string;
 }
 
@@ -65,6 +86,7 @@ export interface Conversation {
     id: string;
     name: string;
     avatar?: any;
+    isVerified?: boolean;
   }[];
   lastMessage?: ChatMessage;
   unreadCount: number;

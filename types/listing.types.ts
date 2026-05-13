@@ -4,6 +4,11 @@ export interface ListingSeller {
     id: string;
     name: string;
     role: string;
+    isVerified?: boolean;
+    phone?: string;
+    district?: string;
+    address?: string;
+    workingHours?: string;
 }
 
 export interface Listing {

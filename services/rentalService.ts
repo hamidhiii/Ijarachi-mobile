@@ -3,8 +3,8 @@ import { MOCK_BOOKINGS } from '../mocks/bookings';
 import { Booking, BookingStatus } from '../types/rental.types';
 
 // ─── Rental Service ──────────────────────────────────────────────────────────
-// Упрощённая модель: физической передачей вещей занимаются курьеры Rentoo,
-// поэтому пользователь не загружает фото и не подтверждает приёмку.
+// Упрощённая модель: пользователь выбирает самовывоз или Yandex Доставку.
+// Фотопротокол передачи удалён из пользовательского сценария.
 // Бронирование:   pending_payment → confirmed → active → completed
 //                                                     ↘ cancelled / in_dispute
 //
@@ -12,7 +12,7 @@ import { Booking, BookingStatus } from '../types/rental.types';
 //   GET    /users/:userId/bookings
 //   GET    /bookings/:id
 //   POST   /bookings                 — создать (из Payment)
-//   PATCH  /bookings/:id/status      — сменить статус (курьер / модерация)
+//   PATCH  /bookings/:id/status      — сменить статус (Yandex / модерация)
 //   POST   /bookings/:id/dispute     — открыть спор
 
 // В памяти (имитация базы)
@@ -50,7 +50,7 @@ export async function updateBookingStatus(
 
 /**
  * Создать новое бронирование после оплаты.
- * Статус сразу `confirmed` — владелец получает уведомление, курьер назначается.
+ * Статус сразу `confirmed` — владелец получает уведомление, способ получения уже выбран.
  */
 export async function createBooking(
     data: Omit<Booking, 'id' | 'createdAt' | 'status'> & { status?: BookingStatus }

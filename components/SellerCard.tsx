@@ -2,14 +2,16 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/Colors';
+import VerifiedBadge from './VerifiedBadge';
 
 interface SellerCardProps {
   sellerName: string;
   sellerRole: string;
+  isVerified?: boolean;
   onPress?: () => void;
 }
 
-export const SellerCard = ({ sellerName, sellerRole, onPress }: SellerCardProps) => {
+export const SellerCard = ({ sellerName, sellerRole, isVerified, onPress }: SellerCardProps) => {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       <Image
@@ -19,7 +21,10 @@ export const SellerCard = ({ sellerName, sellerRole, onPress }: SellerCardProps)
 
       <View style={styles.info}>
         <Text style={styles.badge}>ВЛАДЕЛЕЦ ВЕЩИ</Text>
-        <Text style={styles.name}>{sellerName}</Text>
+        <View style={styles.nameRow}>
+          <Text style={styles.name} numberOfLines={1}>{sellerName}</Text>
+          {isVerified && <VerifiedBadge compact />}
+        </View>
         <Text style={styles.role}>{sellerRole}</Text>
       </View>
 
@@ -65,9 +70,15 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   name: {
+    flexShrink: 1,
     fontSize: 18,
     fontWeight: '700',
     color: Colors.text,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   role: {
     fontSize: 13,

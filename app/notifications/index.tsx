@@ -24,8 +24,8 @@ const MOCK_NOTIFICATIONS: Notification[] = [
     },
     {
         id: '2',
-        title: 'Подтверждение PINFL',
-        message: 'Ваши документы приняты на проверку. Это займет до 24 часов.',
+        title: 'Верификация MyID',
+        message: 'Личность подтверждена. Теперь рядом с вашим профилем появится зелёная галочка.',
         time: '2 часа назад',
         isRead: true,
         type: 'system',

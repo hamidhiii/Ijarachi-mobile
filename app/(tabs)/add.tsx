@@ -87,6 +87,17 @@ export default function AddProductScreen() {
             );
             return;
         }
+        if (!user.isPinflVerified) {
+            Alert.alert(
+                'Подтвердите личность через MyID',
+                'Без MyID нельзя сдавать вещи в аренду. Проверка одноразовая и бесплатная — Rentoo покрывает расходы.',
+                [
+                    { text: 'Позже', style: 'cancel' },
+                    { text: 'Пройти MyID', onPress: () => router.push('/auth/myid' as any) },
+                ]
+            );
+            return;
+        }
         if (images.length === 0) {
             Alert.alert('Нет фото', 'Добавьте хотя бы одну фотографию вещи.');
             return;
@@ -122,7 +133,7 @@ export default function AddProductScreen() {
                     image: { uri: images[0] }, // первая фотка — главная
                     location: 'Ташкент',
                 },
-                { id: user.id, name: user.name }
+                { id: user.id, name: user.name, isVerified: user.isPinflVerified }
             );
 
             Alert.alert(
@@ -149,6 +160,23 @@ export default function AddProductScreen() {
                 </View>
 
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+                    {isLoggedIn && user && !user.isPinflVerified && (
+                        <TouchableOpacity
+                            style={styles.verifyNotice}
+                            onPress={() => router.push('/auth/myid' as any)}
+                            activeOpacity={0.85}
+                        >
+                            <View style={styles.verifyIcon}>
+                                <Ionicons name="shield-checkmark" size={22} color="#fff" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.verifyTitle}>Нужна MyID-верификация</Text>
+                                <Text style={styles.verifyText}>Пройдите одноразовую проверку перед публикацией объявления.</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={18} color="#fff" />
+                        </TouchableOpacity>
+                    )}
+
                     <Text style={styles.sectionTitle}>Фотографии</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoList}>
                         <TouchableOpacity style={styles.addPhotoBtn} onPress={pickImage}>
@@ -307,6 +335,25 @@ const styles = StyleSheet.create({
     headerTitle: { fontSize: 24, fontWeight: '800', color: Colors.text },
     scroll: { padding: 20 },
     sectionTitle: { fontSize: 18, fontWeight: '700', color: Colors.text, marginBottom: 15 },
+    verifyNotice: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        backgroundColor: Colors.primary,
+        borderRadius: 18,
+        padding: 14,
+        marginBottom: 20,
+    },
+    verifyIcon: {
+        width: 42,
+        height: 42,
+        borderRadius: 13,
+        backgroundColor: 'rgba(255,255,255,0.18)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    verifyTitle: { color: '#fff', fontSize: 15, fontWeight: '800' },
+    verifyText: { color: 'rgba(255,255,255,0.88)', fontSize: 12, lineHeight: 17, marginTop: 2 },
 
     photoList: { flexDirection: 'row', marginBottom: 5 },
     addPhotoBtn: {

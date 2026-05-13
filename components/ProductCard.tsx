@@ -6,6 +6,7 @@ import React, { memo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/Colors';
 import { Listing } from '../types/listing.types';
+import VerifiedBadge from './VerifiedBadge';
 
 type ProductCardProps = { item: Listing };
 
@@ -54,6 +55,11 @@ function ProductCard({ item }: ProductCardProps) {
                                     <Text style={styles.reviewText}> ({reviewCount})</Text>
                                 )}
                             </Text>
+                        </View>
+
+                        <View style={styles.ownerRow}>
+                            <Text style={styles.ownerText} numberOfLines={1}>{item.seller.name}</Text>
+                            {item.seller.isVerified && <VerifiedBadge compact />}
                         </View>
 
                         <Text style={styles.price}>
@@ -133,6 +139,18 @@ const styles = StyleSheet.create({
         fontSize: 10,
         color: Colors.textMuted,
         fontWeight: '500',
+    },
+    ownerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginTop: 3,
+    },
+    ownerText: {
+        fontSize: 10,
+        color: Colors.textMuted,
+        fontWeight: '600',
+        flexShrink: 1,
     },
     price: {
         fontSize: 13,

@@ -48,9 +48,9 @@ export default function MyIdScreen() {
             }
             await updateUser({ isPinflVerified: true });
             Alert.alert(
-                'Верификация пройдена',
-                'Ваша личность подтверждена. Теперь вы можете сдавать вещи в аренду.',
-                [{ text: 'Отлично', onPress: () => router.back() }]
+                'Готово!',
+                'Теперь у вас статус Верифицированный пользователь. Проверка больше не понадобится.',
+                [{ text: 'Продолжить', onPress: () => router.back() }]
             );
         } catch {
             Alert.alert(
@@ -81,10 +81,10 @@ export default function MyIdScreen() {
                         <View style={styles.iconCircle}>
                             <Ionicons name="shield-checkmark" size={48} color={Colors.primary} />
                         </View>
-                        <Text style={styles.bannerTitle}>Подтвердите личность</Text>
+                        <Text style={styles.bannerTitle}>Подтвердите личность через MyID</Text>
                         <Text style={styles.bannerText}>
-                            Для сдачи вещей в аренду требуется верификация через систему MyID.
-                            Данные проверяются по базе ПИНФЛ Узбекистана.
+                            Для безопасности всех пользователей Rentoo требует одноразовую государственную верификацию.
+                            Это займёт около 2 минут и больше никогда не понадобится.
                         </Text>
                     </View>
 
@@ -95,11 +95,15 @@ export default function MyIdScreen() {
                         </View>
                         <View style={styles.chip}>
                             <Ionicons name="time-outline" size={14} color={Colors.primary} />
-                            <Text style={styles.chipText}>~10 сек</Text>
+                            <Text style={styles.chipText}>~2 мин</Text>
                         </View>
                         <View style={styles.chip}>
                             <Ionicons name="checkmark-circle-outline" size={14} color={Colors.primary} />
                             <Text style={styles.chipText}>Одноразово</Text>
+                        </View>
+                        <View style={styles.chip}>
+                            <Ionicons name="gift-outline" size={14} color={Colors.primary} />
+                            <Text style={styles.chipText}>Бесплатно</Text>
                         </View>
                     </View>
 
@@ -144,7 +148,8 @@ export default function MyIdScreen() {
                     <View style={styles.privacyBox}>
                         <Ionicons name="information-circle-outline" size={16} color="#64748B" />
                         <Text style={styles.privacyText}>
-                            Rentoo не хранит паспортные данные. Проверка выполняется через защищённый API MyID.
+                            Rentoo покрывает стоимость MyID. Паспортные данные не хранятся в приложении:
+                            проверка выполняется через защищённый API MyID.
                         </Text>
                     </View>
                 </ScrollView>
@@ -161,7 +166,7 @@ export default function MyIdScreen() {
                         ) : (
                             <>
                                 <Ionicons name="shield-checkmark-outline" size={20} color="#fff" />
-                                <Text style={styles.submitBtnText}>Подтвердить через MyID</Text>
+                                <Text style={styles.submitBtnText}>Пройти верификацию</Text>
                             </>
                         )}
                     </TouchableOpacity>

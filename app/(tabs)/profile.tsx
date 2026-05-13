@@ -3,7 +3,9 @@ import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Image, RefreshControl,
+  Image,
+  Linking,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import VerifiedBadge from '../../components/VerifiedBadge';
 import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../context/AuthContext';
 import { getBookings } from '../../services/rentalService';
@@ -18,16 +21,42 @@ import { Booking, BookingStatus, UserRole } from '../../types/rental.types';
 
 const STATUS_META: Record<BookingStatus, { label: string; color: string; bg: string; icon: string }> = {
   pending_payment: { label: 'Ожидает оплаты', color: '#D97706', bg: '#FFFBEB', icon: 'card-outline' },
-  confirmed: { label: 'Курьер назначен', color: '#2563EB', bg: '#EFF6FF', icon: 'bicycle-outline' },
+  confirmed: { label: 'Сделка открыта', color: '#2563EB', bg: '#EFF6FF', icon: 'checkmark-circle-outline' },
   active: { label: 'Аренда идёт', color: '#059669', bg: '#ECFDF5', icon: 'checkmark-circle-outline' },
   completed: { label: 'Завершено', color: '#64748B', bg: '#F8FAFC', icon: 'checkmark-done-outline' },
   in_dispute: { label: 'Спор открыт', color: '#DC2626', bg: '#FEF2F2', icon: 'warning-outline' },
   cancelled: { label: 'Отменено', color: '#94A3B8', bg: '#F8FAFC', icon: 'close-circle-outline' },
 };
 
+const YANDEX_STATUS_LABEL: Record<string, string> = {
+  created: 'создан',
+  courier_assigned: 'курьер назначен',
+  picked_up: 'забран',
+  in_transit: 'в пути',
+  delivered: 'доставлен',
+  return_scheduled: 'возврат запланирован',
+  return_in_transit: 'возврат в пути',
+  returned: 'возвращён',
+};
+
 function ReceiptCard({ booking, currentUserId }: { booking: Booking; currentUserId: string }) {
   const myRole: UserRole = booking.ownerId === currentUserId ? 'owner' : 'renter';
-  const meta = STATUS_META[booking.status];
+  const isDelivery = booking.deliveryMethod === 'yandex_delivery';
+  const meta = booking.status === 'confirmed' && isDelivery
+    ? { ...STATUS_META.confirmed, label: 'Yandex заказ', icon: 'cube-outline' }
+    : STATUS_META[booking.status];
+  const counterpartyVerified = myRole === 'owner' ? booking.renterVerified : booking.ownerVerified;
+  const canShowTransferDetails = booking.status !== 'pending_payment' && booking.status !== 'cancelled';
+
+  const openPhone = () => {
+    if (booking.ownerPhone) Linking.openURL(`tel:${booking.ownerPhone}`).catch(() => {});
+  };
+
+  const openMap = () => {
+    if (booking.pickupAddress) {
+      Linking.openURL(`https://yandex.uz/maps/?text=${encodeURIComponent(booking.pickupAddress)}`).catch(() => {});
+    }
+  };
 
   return (
     <View style={cardStyles.card}>
@@ -46,7 +75,54 @@ function ReceiptCard({ booking, currentUserId }: { booking: Booking; currentUser
 
       <Text style={cardStyles.roleText}>
         {myRole === 'owner' ? `→ ${booking.renterName}` : `у ${booking.ownerName}`}
+        {counterpartyVerified ? ' · MyID' : ''}
       </Text>
+
+      <View style={cardStyles.transferBox}>
+        <View style={cardStyles.transferHead}>
+          <Ionicons name={isDelivery ? 'cube-outline' : 'walk-outline'} size={14} color={Colors.primary} />
+          <Text style={cardStyles.transferTitle}>
+            {isDelivery ? 'Доставка Rentoo' : 'Самовывоз'}
+          </Text>
+        </View>
+
+        {isDelivery ? (
+          <Text style={cardStyles.transferText}>
+            {booking.yandexOrderId ? `Заказ ${booking.yandexOrderId}. ` : ''}
+            Статус Yandex: {YANDEX_STATUS_LABEL[booking.yandexStatus || 'created'] || 'создан'}
+            {booking.yandexEtaMinutes ? `, ETA ~${booking.yandexEtaMinutes} мин.` : '.'}
+          </Text>
+        ) : (
+          <>
+            <Text style={cardStyles.transferText}>
+              Район: {booking.pickupDistrict || booking.deliveryLocation || 'будет указан после оплаты'}.
+            </Text>
+            {canShowTransferDetails && !!booking.pickupAddress && (
+              <Text style={cardStyles.transferText}>Адрес: {booking.pickupAddress}</Text>
+            )}
+            {canShowTransferDetails && !!booking.ownerPhone && (
+              <View style={cardStyles.actionRow}>
+                <TouchableOpacity style={cardStyles.actionBtn} onPress={openPhone}>
+                  <Ionicons name="call-outline" size={13} color={Colors.primary} />
+                  <Text style={cardStyles.actionText}>Позвонить</Text>
+                </TouchableOpacity>
+                {!!booking.pickupAddress && (
+                  <TouchableOpacity style={cardStyles.actionBtn} onPress={openMap}>
+                    <Ionicons name="map-outline" size={13} color={Colors.primary} />
+                    <Text style={cardStyles.actionText}>Yandex Карты</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </>
+        )}
+      </View>
+
+      {booking.ownerVerified && booking.renterVerified && (
+        <View style={cardStyles.verifiedLine}>
+          <VerifiedBadge label="Обе стороны верифицированы через MyID" />
+        </View>
+      )}
     </View>
   );
 }
@@ -79,6 +155,27 @@ const cardStyles = StyleSheet.create({
   },
   badgeText: { fontSize: 9, fontWeight: '700' },
   roleText: { fontSize: 11, color: '#64748B' },
+  transferBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    padding: 12,
+    gap: 6,
+  },
+  transferHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  transferTitle: { fontSize: 12, fontWeight: '800', color: Colors.text },
+  transferText: { fontSize: 11, color: '#64748B', lineHeight: 16 },
+  actionRow: { flexDirection: 'row', gap: 8, marginTop: 4, flexWrap: 'wrap' },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#ECFDF5',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  actionText: { color: Colors.primary, fontSize: 11, fontWeight: '800' },
+  verifiedLine: { marginTop: 2 },
 });
 
 function MenuItem({ icon, label, onPress }: { icon: string; label: string; onPress?: () => void }) {
@@ -217,7 +314,7 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* PINFL Verification Banner */}
+        {/* MyID Verification Banner */}
         {!user?.isPinflVerified && (
           <TouchableOpacity style={styles.verifyBanner} activeOpacity={0.9} onPress={() => router.push('/auth/myid' as any)}>
             <View style={styles.verifyIconBox}>
@@ -225,7 +322,7 @@ export default function ProfileScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.verifyTitle}>Верификация MyID</Text>
-              <Text style={styles.verifyText}>Подтвердите личность (PINFL), чтобы сдавать вещи в аренду</Text>
+              <Text style={styles.verifyText}>Одноразовая проверка перед первой сделкой. Бесплатно, Rentoo покрывает расходы</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#fff" />
           </TouchableOpacity>

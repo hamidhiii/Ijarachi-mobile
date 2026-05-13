@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import ProductCard from '../../components/ProductCard';
+import VerifiedBadge from '../../components/VerifiedBadge';
 import { Colors } from '../../constants/Colors';
 import { getUserListings, getUserProfile } from '../../services/userService';
 import { Listing } from '../../types/listing.types';
@@ -67,9 +68,8 @@ export default function SellerProfileScreen() {
                     <Text style={styles.name}>{seller.name}</Text>
 
                     {seller.isPinflVerified && (
-                        <View style={styles.verifiedBadge}>
-                            <Ionicons name="checkmark-circle" size={16} color={Colors.primary} />
-                            <Text style={styles.verifiedText}>Личность подтверждена</Text>
+                        <View style={styles.verifiedWrap}>
+                            <VerifiedBadge label="Личность подтверждена" />
                         </View>
                     )}
 
@@ -81,7 +81,7 @@ export default function SellerProfileScreen() {
                                 <Text style={styles.statLabel}>Рейтинг</Text>
                             </View>
                         </View>
-                        < View style={styles.divider} />
+                        <View style={styles.divider} />
                         <View style={styles.statItem}>
                             <Text style={styles.statValue}>{seller.reviewCount}</Text>
                             <Text style={styles.statLabel}>Отзывов</Text>
@@ -140,17 +140,7 @@ const styles = StyleSheet.create({
     profileHeader: { alignItems: 'center', paddingTop: 20, paddingBottom: 10, paddingHorizontal: 20 },
     avatar: { width: 90, height: 90, borderRadius: 45, backgroundColor: '#F1F5F9', marginBottom: 12 },
     name: { fontSize: 22, fontWeight: '800', color: Colors.text, marginBottom: 6 },
-    verifiedBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        backgroundColor: '#F0FDF4',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
-        marginBottom: 20
-    },
-    verifiedText: { fontSize: 12, color: Colors.primary, fontWeight: '700' },
+    verifiedWrap: { marginBottom: 20 },
     statsRow: {
         flexDirection: 'row',
         alignItems: 'center',

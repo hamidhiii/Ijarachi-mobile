@@ -4,8 +4,8 @@ export const MOCK_CONVERSATIONS: Conversation[] = [
     {
         id: 'conv_001',
         participants: [
-            { id: 'user_me', name: 'Вы' },
-            { id: 'user_alice', name: 'Алина', avatar: 'https://i.pravatar.cc/150?u=alice' }
+            { id: 'user_me', name: 'Вы', isVerified: false },
+            { id: 'user_alice', name: 'Алина', avatar: 'https://i.pravatar.cc/150?u=alice', isVerified: true }
         ],
         lastMessage: {
             id: 'msg_001',
@@ -21,8 +21,8 @@ export const MOCK_CONVERSATIONS: Conversation[] = [
     {
         id: 'conv_002',
         participants: [
-            { id: 'user_me', name: 'Вы' },
-            { id: 'user_bob', name: 'Бобур', avatar: 'https://i.pravatar.cc/150?u=bob' }
+            { id: 'user_me', name: 'Вы', isVerified: false },
+            { id: 'user_bob', name: 'Бобур', avatar: 'https://i.pravatar.cc/150?u=bob', isVerified: true }
         ],
         lastMessage: {
             id: 'msg_002',
