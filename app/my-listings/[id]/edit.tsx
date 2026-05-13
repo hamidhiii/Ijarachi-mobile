@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -45,11 +45,7 @@ export default function EditListingScreen() {
         CLOTHING_CATEGORIES.includes(selectedCategory),
         [selectedCategory]);
 
-    useEffect(() => {
-        loadListing();
-    }, [id]);
-
-    const loadListing = async () => {
+    const loadListing = useCallback(async () => {
         try {
             const data = await listingService.getListingById(id as string);
             if (data) {
@@ -63,12 +59,16 @@ export default function EditListingScreen() {
                 setImage(data.image);
                 setBlockedDates(data.blockedDates || []);
             }
-        } catch (e) {
+        } catch {
             Alert.alert('Ошибка', 'Не удалось загрузить данные');
         } finally {
             setLoading(false);
         }
-    };
+    }, [id]);
+
+    useEffect(() => {
+        loadListing();
+    }, [loadListing]);
 
     const handleSave = async () => {
         if (!title.trim() || !price.trim() || !selectedCategory) {
@@ -91,7 +91,7 @@ export default function EditListingScreen() {
             Alert.alert('Успех', 'Изменения сохранены', [
                 { text: 'OK', onPress: () => router.back() }
             ]);
-        } catch (e) {
+        } catch {
             Alert.alert('Ошибка', 'Не удалось сохранить');
         } finally {
             setSaving(false);

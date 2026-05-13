@@ -33,6 +33,7 @@ export interface Booking {
   totalAmount: number;        // В сумах
 
   status: BookingStatus;
+  deliveryLocation?: string;
 
   // Временные метки
   createdAt: string;

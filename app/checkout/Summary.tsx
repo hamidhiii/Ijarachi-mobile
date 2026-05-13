@@ -1,24 +1,40 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import YandexMapPicker from '../../components/YandexMapPicker';
 import { Colors } from '../../constants/Colors';
 import * as listingService from '../../services/listingService';
 import { Listing } from '../../types/listing.types';
 
+const LOCATION_KEY = 'rentoo_user_location';
+
 export default function OrderSummary() {
   const router = useRouter();
-
   const { id, days, qty, startDate, endDate } = useLocalSearchParams();
 
   const [product, setProduct] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
+  const [location, setLocation] = useState('');
+  const [mapOpen, setMapOpen] = useState(false);
 
   useEffect(() => {
     listingService.getListingById(id as string).then(data => {
       setProduct(data);
     }).finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => {
+    AsyncStorage.getItem(LOCATION_KEY).then(saved => {
+      setLocation(saved || 'Ташкент, Чиланзар');
+    });
+  }, []);
+
+  const handleSelectLocation = async (address: string) => {
+    setLocation(address);
+    try { await AsyncStorage.setItem(LOCATION_KEY, address); } catch {}
+  };
 
   if (loading) {
     return (
@@ -47,12 +63,9 @@ export default function OrderSummary() {
   const quantity = parseInt(qty as string) || 1;
   const pricePerDay =
     product.priceNum ?? (parseInt((product.price ?? '0').replace(/\D/g, ''), 10) || 0);
-
-  // Итоговый расчет: Цена * Дни * Количество
   const rentTotal = pricePerDay * daysCount * quantity;
   const totalAmount = rentTotal;
 
-  // Функция для красивого формата дат (например, "12 апр.")
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
@@ -70,13 +83,11 @@ export default function OrderSummary() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
-        {/* Карточка товара с датами и количеством */}
+        {/* Карточка товара */}
         <View style={styles.productCard}>
           <Image source={product.image} style={styles.productImg} />
           <View style={styles.productInfo}>
             <Text style={styles.productTitle} numberOfLines={1}>{product.title}</Text>
-
-            {/* Отображение периода аренды */}
             <View style={styles.infoRow}>
               <Ionicons name="calendar-outline" size={14} color="#64748B" />
               <Text style={styles.productSub}>
@@ -86,8 +97,6 @@ export default function OrderSummary() {
                 {` (${daysCount} дн.)`}
               </Text>
             </View>
-
-            {/* Отображение количества (только если > 1) */}
             {quantity > 1 && (
               <View style={styles.infoRow}>
                 <Ionicons name="layers-outline" size={14} color="#64748B" />
@@ -97,6 +106,23 @@ export default function OrderSummary() {
           </View>
         </View>
 
+        {/* Адрес доставки */}
+        <TouchableOpacity style={styles.locationCard} onPress={() => setMapOpen(true)} activeOpacity={0.8}>
+          <View style={styles.locationLeft}>
+            <View style={styles.locationIcon}>
+              <Ionicons name="location" size={18} color={Colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.locationLabel}>Адрес доставки</Text>
+              <Text style={styles.locationValue} numberOfLines={2}>
+                {location || 'Нажмите, чтобы выбрать'}
+              </Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+        </TouchableOpacity>
+
+        {/* Детали расчёта */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Детали расчета</Text>
           <View style={styles.row}>
@@ -105,7 +131,6 @@ export default function OrderSummary() {
             </Text>
             <Text style={styles.value}>{rentTotal.toLocaleString()} сум</Text>
           </View>
-
           <View style={[styles.row, styles.totalRow]}>
             <Text style={styles.totalLabel}>Итого к оплате</Text>
             <Text style={styles.totalValue}>{totalAmount.toLocaleString()} сум</Text>
@@ -131,12 +156,20 @@ export default function OrderSummary() {
               startDate: startDate as string,
               endDate: endDate as string,
               days: daysCount,
+              location,
             }
           })}
         >
           <Text style={styles.payBtnText}>Перейти к оплате</Text>
         </TouchableOpacity>
       </View>
+
+      <YandexMapPicker
+        visible={mapOpen}
+        onClose={() => setMapOpen(false)}
+        onSelect={(address) => handleSelectLocation(address)}
+        initialAddress={location}
+      />
     </SafeAreaView>
   );
 }
@@ -146,12 +179,24 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20 },
   headerTitle: { fontSize: 18, fontWeight: '700', color: Colors.text },
   scroll: { padding: 20 },
-  productCard: { flexDirection: 'row', backgroundColor: '#F8FAFC', padding: 15, borderRadius: 20, marginBottom: 25, alignItems: 'center' },
+
+  productCard: { flexDirection: 'row', backgroundColor: '#F8FAFC', padding: 15, borderRadius: 20, marginBottom: 16, alignItems: 'center' },
   productImg: { width: 70, height: 70, borderRadius: 12 },
   productInfo: { marginLeft: 15, flex: 1 },
   productTitle: { fontSize: 16, fontWeight: '700', color: Colors.text },
   productSub: { fontSize: 13, color: '#64748B' },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+
+  locationCard: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC', borderRadius: 20, padding: 16, marginBottom: 16,
+    borderWidth: 1.5, borderColor: '#E2E8F0',
+  },
+  locationLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: 8 },
+  locationIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#ECFDF5', justifyContent: 'center', alignItems: 'center' },
+  locationLabel: { fontSize: 12, color: '#64748B', marginBottom: 2 },
+  locationValue: { fontSize: 14, fontWeight: '700', color: Colors.text },
+
   section: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#F1F5F9', borderRadius: 25, padding: 20 },
   sectionTitle: { fontSize: 18, fontWeight: '800', color: Colors.text, marginBottom: 20 },
   row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
@@ -160,9 +205,11 @@ const styles = StyleSheet.create({
   totalRow: { marginTop: 10, paddingTop: 20, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
   totalLabel: { fontSize: 16, fontWeight: '700', color: Colors.text },
   totalValue: { fontSize: 20, fontWeight: '900', color: Colors.primary },
+
   infoBox: { flexDirection: 'row', backgroundColor: '#ECFDF5', padding: 15, borderRadius: 15, marginTop: 25, gap: 10 },
   infoText: { flex: 1, fontSize: 12, color: Colors.primary, lineHeight: 18 },
+
   footer: { padding: 20, paddingBottom: 40 },
   payBtn: { backgroundColor: Colors.primary, height: 60, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
-  payBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' }
+  payBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
 });

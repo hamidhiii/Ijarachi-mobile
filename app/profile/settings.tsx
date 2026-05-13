@@ -34,7 +34,7 @@ export default function SettingsScreen() {
             onPress={onPress}
             disabled={type === 'switch'}
         >
-            <View style={[styles.iconBox, { backgroundColor: color + '10' }]}>
+            <View style={[styles.iconBox, color === Colors.primary && { backgroundColor: '#ECFDF5' }]}>
                 <Ionicons name={icon} size={20} color={color} />
             </View>
             <Text style={[styles.itemTitle, { color }]}>{title}</Text>

@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Image, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
 import { SellerCard } from '../../components/SellerCard';
 import QuantitySelector from '../../components/listing/QuantitySelector';
@@ -14,6 +15,7 @@ import { Listing } from '../../types/listing.types';
 
 let DateTimePicker: any;
 if (Platform.OS !== 'web') {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     DateTimePicker = require('@react-native-community/datetimepicker').default;
 }
 
@@ -24,6 +26,7 @@ export default function ProductDetail() {
     const { id } = useLocalSearchParams();
     const { isLoggedIn } = useAuth();
     const { wishlist, toggleWishlist } = useWishlist();
+    const insets = useSafeAreaInsets();
 
     const [product, setProduct] = useState<Listing | null>(null);
     const [loadingProduct, setLoadingProduct] = useState(true);
@@ -98,12 +101,10 @@ export default function ProductDetail() {
     }, [product?.blockedDates]);
 
     useEffect(() => {
-        if (product?.blockedDates) {
-            setRange(prev => ({
-                ...prev,
-                markedDates: { ...prev.markedDates, ...blockedDatesObj }
-            }));
-        }
+        setRange(prev => ({
+            ...prev,
+            markedDates: { ...prev.markedDates, ...blockedDatesObj }
+        }));
     }, [blockedDatesObj]);
 
     const handleDayPress = (day: any) => {
@@ -186,7 +187,13 @@ export default function ProductDetail() {
         }
     };
 
-    const daysCount = useMemo(() => Object.keys(range.markedDates).length || 1, [range.markedDates]);
+    const daysCount = useMemo(() => {
+        if (!range.start || !range.end) return 1;
+        const diff = Math.round(
+            (new Date(range.end).getTime() - new Date(range.start).getTime()) / (1000 * 60 * 60 * 24)
+        ) + 1;
+        return Math.max(1, diff);
+    }, [range.start, range.end]);
     const totalAmount = daysCount * priceNum * (isSizeCategory ? 1 : quantity);
 
     const rating = product?.rating ?? 4.8;
@@ -216,12 +223,12 @@ export default function ProductDetail() {
     }
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
-            <StatusBar barStyle="dark-content" />
+        <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+            <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
             <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
                 <View style={styles.imageWrap}>
                     <Image source={product.image} style={styles.mainImage} />
-                    <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+                    <TouchableOpacity style={[styles.backBtn, { top: insets.top + 10 }]} onPress={() => router.back()}>
                         <Ionicons name="chevron-back" size={22} color={Colors.text} />
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.heartBtn} onPress={() => toggleWishlist(product.id)}>
@@ -381,21 +388,21 @@ export default function ProductDetail() {
                     onPress={handleBooking}
                 ><Text style={styles.bookBtnText}>Забронировать</Text></TouchableOpacity>
             </View>
-        </SafeAreaView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     imageWrap: { position: 'relative' },
     backBtn: {
-        position: 'absolute', top: 50, left: 16, zIndex: 10,
+        position: 'absolute', left: 16, zIndex: 10,
         backgroundColor: 'rgba(255,255,255,0.92)', width: 40, height: 40,
         borderRadius: 13, justifyContent: 'center', alignItems: 'center',
         shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
     },
     heartBtn: {
-        position: 'absolute', top: 50, right: 16, zIndex: 10,
+        position: 'absolute', right: 16, zIndex: 10,
         backgroundColor: 'rgba(255,255,255,0.92)', width: 40, height: 40,
         borderRadius: 13, justifyContent: 'center', alignItems: 'center',
         shadowColor: '#000', shadowOffset: { width: 0, height: 2 },

@@ -13,7 +13,7 @@ export default function VerifyScreen() {
     const [loading, setLoading] = useState(false);
 
     const handleVerify = async () => {
-        if (code.length < 4) {
+        if (code.length < 6) {
             Alert.alert('Ошибка', 'Введите код из СМС');
             return;
         }
@@ -22,7 +22,7 @@ export default function VerifyScreen() {
         try {
             await login(phone as string, code);
             router.replace('/(tabs)');
-        } catch (error) {
+        } catch {
             Alert.alert('Ошибка', 'Неверный код или ошибка сервера');
         } finally {
             setLoading(false);
@@ -36,11 +36,11 @@ export default function VerifyScreen() {
                 <Text style={styles.subTitle}>Мы отправили код на номер {phone}</Text>
 
                 <TextInput
-                    placeholder="0000"
+                    placeholder="000000"
                     placeholderTextColor="#94A3B8"
                     style={styles.otpInput}
                     keyboardType="number-pad"
-                    maxLength={4}
+                    maxLength={6}
                     value={code}
                     onChangeText={setCode}
                     autoFocus

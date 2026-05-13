@@ -44,7 +44,7 @@ export default function RegisterScreen() {
         pathname: '/auth/verify',
         params: { phone: `+998${phone}` }
       });
-    } catch (error) {
+    } catch {
       Alert.alert('Ошибка', 'Не удалось зарегистрироваться');
     } finally {
       setLoading(false);

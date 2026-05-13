@@ -11,7 +11,7 @@ import { Listing } from '../../types/listing.types';
 
 export default function PaymentScreen() {
   const router = useRouter();
-  const { amount, itemId, startDate, endDate, days } = useLocalSearchParams();
+  const { amount, itemId, startDate, endDate, days, location } = useLocalSearchParams();
   const [method, setMethod] = useState<'click' | 'payme' | null>(null);
   const [loading, setLoading] = useState(false);
   const [product, setProduct] = useState<Listing | null>(null);
@@ -45,7 +45,7 @@ export default function PaymentScreen() {
 
     try {
       const daysNum = parseInt(days as string) || 1;
-      const totalAmt = parseInt((amount as string)?.replace(/[^0-9]/g, '')) || 0;
+      const totalAmt = parseInt(amount as string) || 0;
 
       const booking = await createBooking({
         itemId: itemId as string,
@@ -61,6 +61,7 @@ export default function PaymentScreen() {
         totalDays: daysNum,
         totalAmount: totalAmt,
         status: 'confirmed',
+        deliveryLocation: location as string,
       });
 
       await chatService.sendMessage({

@@ -9,23 +9,25 @@ import { Listing } from '../../types/listing.types';
 
 export default function WishlistScreen() {
   const { wishlist } = useWishlist();
-  const [items, setItems] = useState<Listing[]>([]);
+  const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadItems = useCallback(async () => {
+  const loadListings = useCallback(async () => {
     try {
-      const all = await listingService.getListings();
-      setItems(all.filter(item => wishlist.includes(item.id)));
+      const allListings = await listingService.getListings();
+      setListings(allListings);
     } catch {
-      setItems([]);
+      setListings([]);
     } finally {
       setLoading(false);
     }
-  }, [wishlist]);
+  }, []);
 
   useEffect(() => {
-    loadItems();
-  }, [loadItems]);
+    loadListings();
+  }, [loadListings]);
+
+  const favoriteItems = listings.filter(item => wishlist.includes(item.id));
 
   return (
     <SafeAreaView style={styles.container}>
@@ -34,22 +36,22 @@ export default function WishlistScreen() {
         <Text style={styles.headerTitle}>Избранное</Text>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {loading ? (
-          <View style={styles.empty}>
-            <ActivityIndicator size="large" color={Colors.primary} />
-          </View>
-        ) : items.length > 0 ? (
+      {loading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      ) : favoriteItems.length > 0 ? (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
           <View style={styles.grid}>
-            {items.map(item => <ProductCard key={item.id} item={item} />)}
+            {favoriteItems.map(item => <ProductCard key={item.id} item={item} />)}
           </View>
-        ) : (
-          <View style={styles.empty}>
-            <Ionicons name="heart-dislike-outline" size={80} color="#E2E8F0" />
-            <Text style={styles.emptyText}>Вы еще ничего не добавили в избранное</Text>
-          </View>
-        )}
-      </ScrollView>
+        </ScrollView>
+      ) : (
+        <View style={styles.empty}>
+          <Ionicons name="heart-dislike-outline" size={80} color="#E2E8F0" />
+          <Text style={styles.emptyText}>Вы еще ничего не добавили в избранное</Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -62,4 +64,5 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 150 },
   emptyText: { color: '#94A3B8', fontSize: 16, textAlign: 'center', marginTop: 15 },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 });

@@ -22,7 +22,7 @@ export default function LoginScreen() {
         pathname: '/auth/verify',
         params: { phone: `+998${phone}` }
       });
-    } catch (error) {
+    } catch {
       Alert.alert('Ошибка', 'Не удалось отправить код');
     } finally {
       setLoading(false);

@@ -1,38 +1,45 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const WISHLIST_STORAGE_KEY = 'wishlist';
 
 interface WishlistContextType {
   wishlist: string[];
-  toggleWishlist: (id: string) => Promise<void>;
+  toggleWishlist: (id: string) => void;
+  isInWishlist: (id: string) => boolean;
 }
 
-const WishlistContext = createContext<WishlistContextType | null>(null);
+const WishlistContext = createContext<WishlistContextType | undefined>(undefined);
 
 export const WishlistProvider = ({ children }: { children: React.ReactNode }) => {
   const [wishlist, setWishlist] = useState<string[]>([]);
 
-  // Загружаем при старте
   useEffect(() => {
     const loadWishlist = async () => {
-      const saved = await AsyncStorage.getItem('wishlist');
-      if (saved) setWishlist(JSON.parse(saved));
+      try {
+        const saved = await AsyncStorage.getItem(WISHLIST_STORAGE_KEY);
+        if (saved) setWishlist(JSON.parse(saved));
+      } catch {
+        await AsyncStorage.removeItem(WISHLIST_STORAGE_KEY);
+      }
     };
     loadWishlist();
   }, []);
 
-  const toggleWishlist = async (id: string) => {
-    let newWishlist = [...wishlist];
-    if (newWishlist.includes(id)) {
-      newWishlist = newWishlist.filter(item => item !== id);
-    } else {
-      newWishlist.push(id);
-    }
-    setWishlist(newWishlist);
-    await AsyncStorage.setItem('wishlist', JSON.stringify(newWishlist));
-  };
+  const toggleWishlist = useCallback(async (id: string) => {
+    setWishlist(prev => {
+      const next = prev.includes(id)
+        ? prev.filter(item => item !== id)
+        : [...prev, id];
+      AsyncStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(next)).catch(() => {});
+      return next;
+    });
+  }, []);
+
+  const isInWishlist = useCallback((id: string) => wishlist.includes(id), [wishlist]);
 
   return (
-    <WishlistContext.Provider value={{ wishlist, toggleWishlist }}>
+    <WishlistContext.Provider value={{ wishlist, toggleWishlist, isInWishlist }}>
       {children}
     </WishlistContext.Provider>
   );
