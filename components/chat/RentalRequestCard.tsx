@@ -48,7 +48,7 @@ export default function RentalRequestCard({ booking, isOwner }: RentalRequestCar
                     <Ionicons name={isDelivery ? 'cube-outline' : 'walk-outline'} size={14} color="#64748B" />
                     <Text style={styles.detailText}>
                         {isDelivery
-                            ? `Yandex Доставка${booking.yandexEtaMinutes ? `, ETA ~${booking.yandexEtaMinutes} мин` : ''}`
+                            ? `Доставка${booking.yandexEtaMinutes ? `, ETA ~${booking.yandexEtaMinutes} мин` : ''}`
                             : `Самовывоз${booking.pickupDistrict ? `, ${booking.pickupDistrict}` : ''}`}
                     </Text>
                 </View>

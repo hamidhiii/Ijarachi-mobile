@@ -15,12 +15,12 @@ import {
 } from 'react-native';
 import YandexMapPicker from '../../components/YandexMapPicker';
 import { Colors } from '../../constants/Colors';
+import { DeliveryEstimate, estimateYandexDelivery } from '../../services/deliveryService';
 import * as listingService from '../../services/listingService';
 import { Listing } from '../../types/listing.types';
 import { DeliveryMethod } from '../../types/rental.types';
 
 const LOCATION_KEY = 'rentoo_user_location';
-const FIXED_DELIVERY_FEE = 46000;
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -62,10 +62,14 @@ export default function OrderSummary() {
   const [product, setProduct] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
   const [location, setLocation] = useState('');
+  const [deliveryCoords, setDeliveryCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [mapOpen, setMapOpen] = useState(false);
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod | null>(null);
   const [pickupAgreement, setPickupAgreement] = useState(false);
   const [deliveryComment, setDeliveryComment] = useState('');
+  const [deliveryEstimate, setDeliveryEstimate] = useState<DeliveryEstimate | null>(null);
+  const [estimateLoading, setEstimateLoading] = useState(false);
+  const [estimateError, setEstimateError] = useState('');
 
   useEffect(() => {
     listingService.getListingById(id as string).then(data => {
@@ -79,8 +83,44 @@ export default function OrderSummary() {
     });
   }, []);
 
-  const handleSelectLocation = async (address: string) => {
+  useEffect(() => {
+    let cancelled = false;
+    async function loadEstimate() {
+      if (deliveryMethod !== 'yandex_delivery' || !product || !location.trim()) return;
+
+      setEstimateLoading(true);
+      setEstimateError('');
+      setDeliveryEstimate(null);
+      try {
+        const estimate = await estimateYandexDelivery({
+          fromDistrict: product.seller.district || product.location,
+          toAddress: location,
+          category: product.category,
+          fromLat: product.latitude,
+          fromLng: product.longitude,
+          toLat: deliveryCoords?.lat,
+          toLng: deliveryCoords?.lng,
+        });
+        if (!cancelled) setDeliveryEstimate(estimate);
+      } catch {
+        if (!cancelled) {
+          setDeliveryEstimate(null);
+          setEstimateError('Сервис временно недоступен, попробуйте позже или выберите самовывоз');
+        }
+      } finally {
+        if (!cancelled) setEstimateLoading(false);
+      }
+    }
+
+    loadEstimate();
+    return () => {
+      cancelled = true;
+    };
+  }, [deliveryCoords, deliveryMethod, location, product]);
+
+  const handleSelectLocation = async (address: string, coords?: { lat: number; lng: number }) => {
     setLocation(address);
+    if (coords) setDeliveryCoords(coords);
     try { await AsyncStorage.setItem(LOCATION_KEY, address); } catch {}
   };
 
@@ -89,14 +129,14 @@ export default function OrderSummary() {
   const pricePerDay =
     product?.priceNum ?? (parseInt((product?.price ?? '0').replace(/\D/g, ''), 10) || 0);
   const rentTotal = pricePerDay * daysCount * quantity;
-  const deliveryFee = deliveryMethod === 'yandex_delivery' ? FIXED_DELIVERY_FEE : 0;
+  const deliveryFee = deliveryMethod === 'yandex_delivery' ? deliveryEstimate?.price ?? 0 : 0;
   const totalAmount = rentTotal + deliveryFee;
 
   const canContinue = useMemo(() => {
     if (!deliveryMethod) return false;
     if (deliveryMethod === 'pickup') return pickupAgreement;
-    return !!location.trim();
-  }, [deliveryMethod, pickupAgreement, location]);
+    return !!deliveryEstimate && !estimateLoading && !estimateError;
+  }, [deliveryMethod, pickupAgreement, deliveryEstimate, estimateLoading, estimateError]);
 
   const formatMoney = (value: number) => value.toLocaleString('ru-RU');
 
@@ -109,7 +149,8 @@ export default function OrderSummary() {
   const getButtonText = () => {
     if (!deliveryMethod) return 'Выберите способ получения';
     if (deliveryMethod === 'pickup' && !pickupAgreement) return 'Подтвердите условия самовывоза';
-    if (deliveryMethod === 'yandex_delivery' && !location.trim()) return 'Укажите адрес доставки';
+    if (deliveryMethod === 'yandex_delivery' && estimateLoading) return 'Считаем доставку';
+    if (deliveryMethod === 'yandex_delivery' && estimateError) return 'Выберите самовывоз или другой адрес';
     return 'Перейти к оплате';
   };
 
@@ -180,7 +221,11 @@ export default function OrderSummary() {
           />
           <MethodCard
             title="Доставка Rentoo"
-            subtitle={`Привезут до двери. ${formatMoney(FIXED_DELIVERY_FEE)} сум`}
+            subtitle={
+              deliveryEstimate
+                ? `Доставка: ${formatMoney(deliveryEstimate.price)} сум`
+                : 'Привезут до двери. Рассчитаем по адресу'
+            }
             icon="cube-outline"
             selected={deliveryMethod === 'yandex_delivery'}
             onPress={() => setDeliveryMethod('yandex_delivery')}
@@ -247,12 +292,29 @@ export default function OrderSummary() {
               multiline
             />
 
-            <View style={styles.deliveryProtection}>
-              <Ionicons name="shield-checkmark" size={20} color={Colors.primary} />
-              <Text style={styles.infoText}>
-                Доставка фиксированная: {formatMoney(FIXED_DELIVERY_FEE)} сум. Rentoo обеспечивает компенсацию при повреждении товара в пути.
-              </Text>
-            </View>
+            {estimateLoading && (
+              <View style={styles.estimateBox}>
+                <ActivityIndicator color={Colors.primary} />
+                <Text style={styles.estimateText}>Рассчитываем стоимость доставки...</Text>
+              </View>
+            )}
+
+            {!!estimateError && (
+              <View style={styles.errorBox}>
+                <Ionicons name="warning-outline" size={18} color="#DC2626" />
+                <Text style={styles.errorText}>{estimateError}</Text>
+              </View>
+            )}
+
+            {deliveryEstimate && !estimateLoading && !estimateError && (
+              <View style={styles.deliveryProtection}>
+                <Ionicons name="shield-checkmark" size={20} color={Colors.primary} />
+                <Text style={styles.infoText}>
+                  Стоимость доставки рассчитана: {formatMoney(deliveryEstimate.price)} сум.
+                  Rentoo обеспечивает компенсацию при повреждении товара в пути.
+                </Text>
+              </View>
+            )}
           </View>
         )}
 
@@ -267,7 +329,7 @@ export default function OrderSummary() {
           {deliveryMethod === 'yandex_delivery' && (
             <View style={styles.row}>
               <Text style={styles.label}>Доставка</Text>
-              <Text style={styles.value}>{formatMoney(deliveryFee)} сум</Text>
+              <Text style={styles.value}>{deliveryEstimate ? `${formatMoney(deliveryFee)} сум` : '...'}</Text>
             </View>
           )}
           {deliveryMethod === 'pickup' && (
@@ -311,7 +373,7 @@ export default function OrderSummary() {
               pickupAddress: product.seller.address || '',
               ownerPhone: product.seller.phone || '',
               ownerWorkingHours: product.seller.workingHours || '',
-              yandexEtaMinutes: '',
+              yandexEtaMinutes: String(deliveryEstimate?.etaMinutes ?? ''),
             }
           })}
         >
@@ -322,7 +384,7 @@ export default function OrderSummary() {
       <YandexMapPicker
         visible={mapOpen}
         onClose={() => setMapOpen(false)}
-        onSelect={(address) => handleSelectLocation(address)}
+        onSelect={(address, coords) => handleSelectLocation(address, coords)}
         initialAddress={location}
       />
     </SafeAreaView>
@@ -420,6 +482,10 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     marginBottom: 12,
   },
+  estimateBox: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },
+  estimateText: { fontSize: 12, color: '#64748B' },
+  errorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: '#FEF2F2', borderRadius: 14, padding: 12 },
+  errorText: { flex: 1, fontSize: 12, color: '#DC2626', lineHeight: 18 },
   deliveryProtection: { flexDirection: 'row', backgroundColor: '#ECFDF5', padding: 14, borderRadius: 15, gap: 10 },
 
   row: { flexDirection: 'row', justifyContent: 'space-between', gap: 14, marginBottom: 14 },
