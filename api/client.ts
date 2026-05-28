@@ -103,6 +103,73 @@ export async function apiRequest<T>(
     return res.json() as Promise<T>;
 }
 
+export async function apiFormRequest<T>(
+    method: 'POST' | 'PATCH' | 'PUT',
+    path: string,
+    body: FormData,
+    opts?: { headers?: Record<string, string>; signal?: AbortSignal; skipRefresh?: boolean }
+): Promise<T> {
+    if (MOCK_MODE) {
+        throw new ApiError(
+            `MOCK_MODE активен: сервис должен вернуть mock-данные напрямую, без вызова apiFormRequest. Path: ${path}`,
+            0,
+            'MOCK_MODE'
+        );
+    }
+
+    const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+    const headers: Record<string, string> = {
+        Accept: 'application/json',
+        ...(opts?.headers ?? {}),
+    };
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    let res: Response;
+    try {
+        res = await fetch(`${BASE_URL}${path}`, {
+            method,
+            headers,
+            body,
+            signal: opts?.signal,
+        });
+    } catch (e: any) {
+        throw new ApiError(
+            e?.message || 'Проблема с соединением. Проверьте интернет.',
+            0,
+            'NETWORK'
+        );
+    }
+
+    if (res.status === 401) {
+        if (opts?.skipRefresh) {
+            await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, AUTH_REFRESH_KEY, AUTH_USER_KEY]);
+            throw new ApiError('Сессия истекла. Войдите заново.', 401, 'UNAUTHORIZED');
+        }
+        const refreshed = await refreshAccessToken();
+        if (refreshed) {
+            return apiFormRequest<T>(method, path, body, { ...opts, skipRefresh: true });
+        }
+        await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, AUTH_REFRESH_KEY, AUTH_USER_KEY]);
+        throw new ApiError('Сессия истекла. Войдите заново.', 401, 'UNAUTHORIZED');
+    }
+
+    if (!res.ok) {
+        let message = `HTTP ${res.status}`;
+        let code: string | undefined;
+        try {
+            const err = await res.json();
+            message = err.detail || err.message || err.error || message;
+            code = err.code;
+        } catch {
+            // не JSON — оставим HTTP-код
+        }
+        throw new ApiError(message, res.status, code);
+    }
+
+    if (res.status === 204) return undefined as unknown as T;
+    return res.json() as Promise<T>;
+}
+
 function normalizeApiBaseUrl(input: string) {
     const trimmed = input.replace(/\/+$/, '');
     return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;

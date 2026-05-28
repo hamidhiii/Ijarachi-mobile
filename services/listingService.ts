@@ -1,4 +1,4 @@
-import { apiRequest, MOCK_MODE } from '../api/client';
+import { apiFormRequest, apiRequest, MOCK_MODE } from '../api/client';
 import { ITEMS } from '../constants/data';
 import { Listing } from '../types/listing.types';
 
@@ -65,7 +65,15 @@ export async function createListing(
 ): Promise<Listing> {
     if (!MOCK_MODE) {
         const response = await apiRequest<any>('POST', '/listings/', toApiListingPayload(data));
-        return mapListing(response);
+        const listing = mapListing(response);
+        const imageUris = getUploadableImageUris(data);
+        for (const [index, uri] of imageUris.entries()) {
+            await uploadListingPhoto(listing.id, uri, index === 0);
+        }
+        if (imageUris.length) {
+            return (await getListingById(listing.id)) ?? listing;
+        }
+        return listing;
     }
 
     await _delay(400);
@@ -135,6 +143,34 @@ export async function getMyListings(userId: string): Promise<Listing[]> {
 
 function _delay(ms: number) {
     return new Promise(r => setTimeout(r, ms));
+}
+
+export async function uploadListingPhoto(listingId: string, imageUri: string, isPrimary = false): Promise<void> {
+    if (MOCK_MODE) {
+        await _delay(150);
+        return;
+    }
+    const formData = new FormData();
+    formData.append('image', {
+        uri: imageUri,
+        name: imageUri.split('/').pop() || `listing-${listingId}.jpg`,
+        type: guessImageMimeType(imageUri),
+    } as any);
+    formData.append('is_primary', String(isPrimary));
+    await apiFormRequest<any>('POST', `/listings/${encodeURIComponent(listingId)}/photos/`, formData);
+}
+
+export async function getListingStats(listingId: string): Promise<{ views: number; favorites: number; bookings: number }> {
+    if (MOCK_MODE) {
+        await _delay(100);
+        return { views: 0, favorites: 0, bookings: 0 };
+    }
+    const response = await apiRequest<any>('GET', `/listings/${encodeURIComponent(listingId)}/stats/`);
+    return {
+        views: Number(response.views ?? response.view_count ?? 0),
+        favorites: Number(response.favorites ?? response.favorite_count ?? 0),
+        bookings: Number(response.bookings ?? response.booking_count ?? response.deal_count ?? 0),
+    };
 }
 
 function readList(response: any): any[] {
@@ -216,4 +252,18 @@ function toApiListingPayload(data: Partial<Listing>) {
         tags: data.tags,
         characteristics: data.characteristics,
     };
+}
+
+function getUploadableImageUris(data: Partial<Listing>) {
+    const images = data.images?.length ? data.images : data.image ? [data.image] : [];
+    return images
+        .map(image => typeof image === 'object' && 'uri' in image ? image.uri : '')
+        .filter(uri => !!uri && !uri.startsWith('http'));
+}
+
+function guessImageMimeType(uri: string) {
+    const lower = uri.toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    return 'image/jpeg';
 }

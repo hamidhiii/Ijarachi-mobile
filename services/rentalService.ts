@@ -1,5 +1,6 @@
 import { apiRequest, MOCK_MODE } from '../api/client';
 import { MOCK_BOOKINGS } from '../mocks/bookings';
+import { DeliveryEstimate } from './deliveryService';
 import { Booking, BookingStatus } from '../types/rental.types';
 
 // ─── Rental Service ──────────────────────────────────────────────────────────
@@ -125,6 +126,33 @@ export async function startDealPayment(id: string, provider: 'click' | 'payme'):
     }
     await _delay(300);
     return {};
+}
+
+export async function calculateDealDelivery(
+    id: string,
+    params: { toLat: number; toLng: number }
+): Promise<DeliveryEstimate> {
+    if (!MOCK_MODE) {
+        const response = await apiRequest<any>('POST', `/deals/${encodeURIComponent(id)}/calculate-delivery/`, {
+            to_lat: params.toLat,
+            to_lng: params.toLng,
+        });
+        return {
+            price: Number(response.price ?? response.cost ?? response.delivery_cost ?? 0),
+            etaMinutes: Number(response.eta_minutes ?? response.eta ?? 45),
+            serviceType: response.service_type ?? 'standard',
+            validUntil: response.valid_until ?? new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+            note: response.note ?? 'Стоимость может измениться при оформлении заказа',
+        };
+    }
+    await _delay(200);
+    return {
+        price: 0,
+        etaMinutes: 45,
+        serviceType: 'standard',
+        validUntil: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+        note: '',
+    };
 }
 
 // ── Приватные хэлперы ─────────────────────────────────────────────────────────

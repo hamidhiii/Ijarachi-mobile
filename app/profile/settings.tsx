@@ -4,6 +4,7 @@ import React from 'react';
 import { Alert, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../context/AuthContext';
+import { guardPendingIntegration } from '../../services/integrationAvailability';
 
 export default function SettingsScreen() {
     const router = useRouter();
@@ -89,7 +90,9 @@ export default function SettingsScreen() {
                     <SettingItem
                         icon="shield-checkmark-outline"
                         title="Верификация MyID"
-                        onPress={() => router.push('/auth/myid' as any)}
+                        onPress={() => {
+                            if (!guardPendingIntegration('myid')) router.push('/auth/myid' as any);
+                        }}
                     />
                 </View>
 

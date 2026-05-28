@@ -4,6 +4,7 @@ import { ActivityIndicator, Alert, SafeAreaView, StyleSheet, Text, TextInput, To
 import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../context/AuthContext';
 import * as authService from '../../services/authService';
+import { guardPendingIntegration } from '../../services/integrationAvailability';
 
 export default function VerifyScreen() {
     const router = useRouter();
@@ -17,6 +18,7 @@ export default function VerifyScreen() {
             Alert.alert('Ошибка', 'Введите код из СМС');
             return;
         }
+        if (guardPendingIntegration('eskiz')) return;
 
         setLoading(true);
         try {
@@ -66,6 +68,7 @@ export default function VerifyScreen() {
                 <TouchableOpacity
                     style={styles.resendBtn}
                     onPress={async () => {
+                        if (guardPendingIntegration('eskiz')) return;
                         try {
                             await authService.sendOTP(phone as string);
                             Alert.alert('Готово', 'Код отправлен повторно');

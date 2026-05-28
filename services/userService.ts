@@ -1,5 +1,6 @@
-import { apiRequest, MOCK_MODE } from '../api/client';
+import { MOCK_MODE } from '../api/client';
 import { ITEMS } from '../constants/data';
+import { getListings } from './listingService';
 import { Listing } from '../types/listing.types';
 import { User } from '../types/user.types';
 
@@ -26,7 +27,18 @@ const MOCK_SELLERS: Record<string, User> = {
 
 export async function getUserProfile(userId: string): Promise<User | null> {
     if (!MOCK_MODE) {
-        return apiRequest<User>('GET', `/users/${encodeURIComponent(userId)}`);
+        const listings = await getListings();
+        const seller = listings.find(item => item.seller.id === userId)?.seller;
+        if (!seller) return null;
+        return {
+            id: seller.id,
+            name: seller.name,
+            phone: seller.phone ?? '',
+            isPinflVerified: Boolean(seller.isVerified),
+            rating: 0,
+            reviewCount: 0,
+            createdAt: new Date().toISOString(),
+        };
     }
     await _delay(300);
     return MOCK_SELLERS[userId] || null;
@@ -34,7 +46,8 @@ export async function getUserProfile(userId: string): Promise<User | null> {
 
 export async function getUserListings(userId: string): Promise<Listing[]> {
     if (!MOCK_MODE) {
-        return apiRequest<Listing[]>('GET', `/users/${encodeURIComponent(userId)}/listings`);
+        const listings = await getListings();
+        return listings.filter(item => item.seller.id === userId);
     }
     await _delay(400);
     return ITEMS.filter(item => item.seller.id === userId) as Listing[];

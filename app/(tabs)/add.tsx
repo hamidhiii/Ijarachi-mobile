@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -22,9 +22,11 @@ import { Colors } from '../../constants/Colors';
 import { CATEGORIES as DATA_CATEGORIES } from '../../constants/data';
 import { ALL_CLOTHING_SIZES, CLOTHING_CATEGORIES } from '../../constants/sizes';
 import { useAuth } from '../../context/AuthContext';
+import { AppCategory, getCategories } from '../../services/categoryService';
+import { guardPendingIntegration } from '../../services/integrationAvailability';
 import * as listingService from '../../services/listingService';
 
-const CATEGORIES = DATA_CATEGORIES.filter(c => c.id !== 'all');
+const INITIAL_CATEGORIES = DATA_CATEGORIES.filter(c => c.id !== 'all') as AppCategory[];
 
 export default function AddProductScreen() {
     const router = useRouter();
@@ -34,6 +36,7 @@ export default function AddProductScreen() {
     const [description, setDescription] = useState('');
     const [price, setPrice] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('');
+    const [categories, setCategories] = useState<AppCategory[]>(INITIAL_CATEGORIES);
     const [loading, setLoading] = useState(false);
 
     // Dynamic states based on category
@@ -41,9 +44,20 @@ export default function AddProductScreen() {
     const [quantity, setQuantity] = useState('1');
     const [unit, setUnit] = useState('шт');
 
+    useEffect(() => {
+        getCategories()
+            .then(data => setCategories(data.filter(cat => cat.id !== 'all')))
+            .catch(() => setCategories(INITIAL_CATEGORIES));
+    }, []);
+
+    const selectedCategoryMeta = useMemo(
+        () => categories.find(cat => cat.id === selectedCategory),
+        [categories, selectedCategory]
+    );
+
     const isSizeCategory = useMemo(() =>
-        CLOTHING_CATEGORIES.includes(selectedCategory),
-        [selectedCategory]);
+        selectedCategoryMeta?.type === 'size' || CLOTHING_CATEGORIES.includes(selectedCategory),
+        [selectedCategory, selectedCategoryMeta?.type]);
 
     const pickImage = async () => {
         const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -93,7 +107,12 @@ export default function AddProductScreen() {
                 'Без MyID нельзя сдавать вещи в аренду. Проверка одноразовая и бесплатная — Rentoo покрывает расходы.',
                 [
                     { text: 'Позже', style: 'cancel' },
-                    { text: 'Пройти MyID', onPress: () => router.push('/auth/myid' as any) },
+                    {
+                        text: 'Пройти MyID',
+                        onPress: () => {
+                            if (!guardPendingIntegration('myid')) router.push('/auth/myid' as any);
+                        },
+                    },
                 ]
             );
             return;
@@ -131,6 +150,7 @@ export default function AddProductScreen() {
                     maxQuantity: isSizeCategory ? 1 : qtyNum,
                     unit: isSizeCategory ? 'шт' : unit,
                     image: { uri: images[0] }, // первая фотка — главная
+                    images: images.map(uri => ({ uri })),
                     location: 'Ташкент',
                 },
                 { id: user.id, name: user.name, isVerified: user.isPinflVerified }
@@ -163,7 +183,9 @@ export default function AddProductScreen() {
                     {isLoggedIn && user && !user.isPinflVerified && (
                         <TouchableOpacity
                             style={styles.verifyNotice}
-                            onPress={() => router.push('/auth/myid' as any)}
+                            onPress={() => {
+                                if (!guardPendingIntegration('myid')) router.push('/auth/myid' as any);
+                            }}
                             activeOpacity={0.85}
                         >
                             <View style={styles.verifyIcon}>
@@ -213,7 +235,7 @@ export default function AddProductScreen() {
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Категория</Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catList}>
-                            {CATEGORIES.map(cat => (
+                            {categories.map(cat => (
                                 <TouchableOpacity
                                     key={cat.id}
                                     style={[

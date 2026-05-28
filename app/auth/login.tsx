@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Alert, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import * as authService from '../../services/authService';
+import { guardPendingIntegration } from '../../services/integrationAvailability';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -14,6 +15,7 @@ export default function LoginScreen() {
       Alert.alert('Ошибка', 'Введите корректный номер телефона');
       return;
     }
+    if (guardPendingIntegration('eskiz')) return;
 
     setLoading(true);
     try {

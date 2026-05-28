@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import VerifiedBadge from '../../components/VerifiedBadge';
 import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../context/AuthContext';
+import { guardPendingIntegration } from '../../services/integrationAvailability';
 import { getBookings } from '../../services/rentalService';
 import { Booking, BookingStatus, UserRole } from '../../types/rental.types';
 
@@ -43,7 +44,7 @@ function ReceiptCard({ booking, currentUserId }: { booking: Booking; currentUser
   const myRole: UserRole = booking.ownerId === currentUserId ? 'owner' : 'renter';
   const isDelivery = booking.deliveryMethod === 'yandex_delivery';
   const meta = booking.status === 'confirmed' && isDelivery
-    ? { ...STATUS_META.confirmed, label: 'Yandex заказ', icon: 'cube-outline' }
+    ? { ...STATUS_META.confirmed, label: 'Доставка', icon: 'cube-outline' }
     : STATUS_META[booking.status];
   const counterpartyVerified = myRole === 'owner' ? booking.renterVerified : booking.ownerVerified;
   const canShowTransferDetails = booking.status !== 'pending_payment' && booking.status !== 'cancelled';
@@ -89,7 +90,7 @@ function ReceiptCard({ booking, currentUserId }: { booking: Booking; currentUser
         {isDelivery ? (
           <Text style={cardStyles.transferText}>
             {booking.yandexOrderId ? `Заказ ${booking.yandexOrderId}. ` : ''}
-            Статус Yandex: {YANDEX_STATUS_LABEL[booking.yandexStatus || 'created'] || 'создан'}
+            Статус доставки: {YANDEX_STATUS_LABEL[booking.yandexStatus || 'created'] || 'создан'}
             {booking.yandexEtaMinutes ? `, ETA ~${booking.yandexEtaMinutes} мин.` : '.'}
           </Text>
         ) : (
@@ -109,7 +110,7 @@ function ReceiptCard({ booking, currentUserId }: { booking: Booking; currentUser
                 {!!booking.pickupAddress && (
                   <TouchableOpacity style={cardStyles.actionBtn} onPress={openMap}>
                     <Ionicons name="map-outline" size={13} color={Colors.primary} />
-                    <Text style={cardStyles.actionText}>Yandex Карты</Text>
+                    <Text style={cardStyles.actionText}>Открыть карту</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -316,7 +317,13 @@ export default function ProfileScreen() {
 
         {/* MyID Verification Banner */}
         {!user?.isPinflVerified && (
-          <TouchableOpacity style={styles.verifyBanner} activeOpacity={0.9} onPress={() => router.push('/auth/myid' as any)}>
+          <TouchableOpacity
+            style={styles.verifyBanner}
+            activeOpacity={0.9}
+            onPress={() => {
+              if (!guardPendingIntegration('myid')) router.push('/auth/myid' as any);
+            }}
+          >
             <View style={styles.verifyIconBox}>
               <Ionicons name="shield-checkmark" size={24} color="#fff" />
             </View>

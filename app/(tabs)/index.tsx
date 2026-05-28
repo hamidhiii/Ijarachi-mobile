@@ -19,8 +19,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ProductCard from '../../components/ProductCard';
 import { Colors } from '../../constants/Colors';
-import { CATEGORIES } from '../../constants/data';
+import { CATEGORIES as FALLBACK_CATEGORIES } from '../../constants/data';
 import { useAuth } from '../../context/AuthContext';
+import { AppCategory, getCategories } from '../../services/categoryService';
 import * as listingService from '../../services/listingService';
 import { Listing } from '../../types/listing.types';
 
@@ -61,6 +62,7 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const [listings, setListings] = useState<Listing[]>([]);
+  const [categories, setCategories] = useState<AppCategory[]>(FALLBACK_CATEGORIES as AppCategory[]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -76,6 +78,9 @@ export default function HomeScreen() {
     AsyncStorage.getItem(ONBOARDING_HINT_KEY).then(seen => {
       if (!seen) setShowOnboardingHint(true);
     });
+    getCategories()
+      .then(setCategories)
+      .catch(() => setCategories(FALLBACK_CATEGORIES as AppCategory[]));
   }, []);
 
   const chooseLocation = useCallback(async (loc: string) => {
@@ -222,7 +227,7 @@ export default function HomeScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.pillsRow}
         >
-          {CATEGORIES.map(cat => {
+          {categories.map(cat => {
             const active = selectedCategory === cat.id;
             return (
               <TouchableOpacity
@@ -289,7 +294,7 @@ export default function HomeScreen() {
               ? `Результаты${filteredItems.length ? ` (${filteredItems.length})` : ''}`
               : selectedCategory === 'all'
                 ? 'Рекомендовано вам'
-                : CATEGORIES.find(c => c.id === selectedCategory)?.title}
+                : categories.find(c => c.id === selectedCategory)?.title}
           </Text>
         </View>
 

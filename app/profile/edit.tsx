@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../context/AuthContext';
+import { guardPendingIntegration } from '../../services/integrationAvailability';
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -127,7 +128,11 @@ export default function EditProfileScreen() {
                 : 'Личность не подтверждена'}
             </Text>
             {!user.isPinflVerified && (
-              <TouchableOpacity onPress={() => router.push('/auth/myid' as any)}>
+              <TouchableOpacity
+                onPress={() => {
+                  if (!guardPendingIntegration('myid')) router.push('/auth/myid' as any);
+                }}
+              >
                 <Text style={styles.verifyLink}>Подтвердить</Text>
               </TouchableOpacity>
             )}

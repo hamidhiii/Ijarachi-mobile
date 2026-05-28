@@ -21,9 +21,10 @@ import SizeSelectorMultiple from '../../../components/listing/SizeSelectorMultip
 import { Colors } from '../../../constants/Colors';
 import { CATEGORIES as DATA_CATEGORIES } from '../../../constants/data';
 import { ALL_CLOTHING_SIZES, CLOTHING_CATEGORIES } from '../../../constants/sizes';
+import { AppCategory, getCategories } from '../../../services/categoryService';
 import * as listingService from '../../../services/listingService';
 
-const CATEGORIES = DATA_CATEGORIES.filter(c => c.id !== 'all');
+const INITIAL_CATEGORIES = DATA_CATEGORIES.filter(c => c.id !== 'all') as AppCategory[];
 
 export default function EditListingScreen() {
     const router = useRouter();
@@ -40,10 +41,22 @@ export default function EditListingScreen() {
     const [unit, setUnit] = useState('шт');
     const [image, setImage] = useState<any>(null);
     const [blockedDates, setBlockedDates] = useState<string[]>([]);
+    const [categories, setCategories] = useState<AppCategory[]>(INITIAL_CATEGORIES);
+
+    useEffect(() => {
+        getCategories()
+            .then(data => setCategories(data.filter(cat => cat.id !== 'all')))
+            .catch(() => setCategories(INITIAL_CATEGORIES));
+    }, []);
+
+    const selectedCategoryMeta = useMemo(
+        () => categories.find(cat => cat.id === selectedCategory),
+        [categories, selectedCategory]
+    );
 
     const isSizeCategory = useMemo(() =>
-        CLOTHING_CATEGORIES.includes(selectedCategory),
-        [selectedCategory]);
+        selectedCategoryMeta?.type === 'size' || CLOTHING_CATEGORIES.includes(selectedCategory),
+        [selectedCategory, selectedCategoryMeta?.type]);
 
     const loadListing = useCallback(async () => {
         try {
@@ -146,7 +159,7 @@ export default function EditListingScreen() {
 
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Категория</Text>
-                        <Text style={styles.disabledInput}>{CATEGORIES.find(c => c.id === selectedCategory)?.title}</Text>
+                        <Text style={styles.disabledInput}>{categories.find(c => c.id === selectedCategory)?.title}</Text>
                     </View>
 
                     {isSizeCategory ? (

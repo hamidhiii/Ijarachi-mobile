@@ -18,6 +18,7 @@ import {
 import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../context/AuthContext';
 import * as authService from '../../services/authService';
+import { guardPendingIntegration } from '../../services/integrationAvailability';
 
 export default function MyIdScreen() {
     const router = useRouter();
@@ -32,6 +33,7 @@ export default function MyIdScreen() {
     const isValid = true;
 
     const handleVerify = async () => {
+        if (guardPendingIntegration('myid')) return;
         setLoading(true);
         try {
             const session = await authService.startMyIdVerification();

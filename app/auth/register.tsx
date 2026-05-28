@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import * as authService from '../../services/authService';
+import { guardPendingIntegration } from '../../services/integrationAvailability';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -31,6 +32,7 @@ export default function RegisterScreen() {
       Alert.alert('Ошибка', 'Введите корректный номер телефона');
       return;
     }
+    if (guardPendingIntegration('eskiz')) return;
 
     setLoading(true);
     try {

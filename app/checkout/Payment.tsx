@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, Image, Linking, SafeAreaView, ScrollView, Sty
 import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../context/AuthContext';
 import { chatService } from '../../services/chatService';
+import { guardPendingIntegration } from '../../services/integrationAvailability';
 import * as listingService from '../../services/listingService';
 import { createBooking, startDealPayment } from '../../services/rentalService';
 import { Listing } from '../../types/listing.types';
@@ -85,7 +86,12 @@ export default function PaymentScreen() {
         'Для безопасности всех пользователей Rentoo требует одноразовую государственную верификацию перед первой сделкой.',
         [
           { text: 'Позже', style: 'cancel' },
-          { text: 'Пройти MyID', onPress: () => router.push('/auth/myid' as any) },
+          {
+            text: 'Пройти MyID',
+            onPress: () => {
+              if (!guardPendingIntegration('myid')) router.push('/auth/myid' as any);
+            },
+          },
         ]
       );
       return;
@@ -95,6 +101,7 @@ export default function PaymentScreen() {
       Alert.alert('Ошибка', 'Объявление не найдено.');
       return;
     }
+    if (method && guardPendingIntegration(method)) return;
 
     setLoading(true);
 
@@ -208,7 +215,9 @@ export default function PaymentScreen() {
               </Text>
               <TouchableOpacity
                 style={styles.kycButton}
-                onPress={() => router.push('/auth/myid' as any)}
+                onPress={() => {
+                  if (!guardPendingIntegration('myid')) router.push('/auth/myid' as any);
+                }}
                 activeOpacity={0.85}
               >
                 <Text style={styles.kycButtonText}>Пройти верификацию</Text>
@@ -221,7 +230,9 @@ export default function PaymentScreen() {
 
         <TouchableOpacity
           style={[styles.payOption, method === 'click' && styles.selectedOption, needsVerification && styles.disabledOption]}
-          onPress={() => setMethod('click')}
+          onPress={() => {
+            if (!guardPendingIntegration('click')) setMethod('click');
+          }}
           disabled={needsVerification}
         >
           <Image source={{ uri: 'https://click.uz/static/img/logo.png' }} style={styles.logo} resizeMode="contain" />
@@ -234,7 +245,9 @@ export default function PaymentScreen() {
 
         <TouchableOpacity
           style={[styles.payOption, method === 'payme' && styles.selectedOption, needsVerification && styles.disabledOption]}
-          onPress={() => setMethod('payme')}
+          onPress={() => {
+            if (!guardPendingIntegration('payme')) setMethod('payme');
+          }}
           disabled={needsVerification}
         >
           <Image source={{ uri: 'https://cdn.payme.uz/logo/payme_color.png' }} style={styles.logo} resizeMode="contain" />
