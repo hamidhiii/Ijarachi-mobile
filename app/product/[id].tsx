@@ -234,7 +234,6 @@ export default function ProductDetail() {
         if (!product) return [];
         return product.images?.length ? product.images : [product.image];
     }, [product]);
-    const hasDeposit = !!product?.depositNum && product.depositNum > 0;
 
     const handleGalleryScroll = (event: any) => {
         const nextIndex = Math.round(event.nativeEvent.contentOffset.x / width);
@@ -361,12 +360,6 @@ export default function ProductDetail() {
                             <Text style={styles.moneyLabel}>Аренда</Text>
                             <Text style={styles.moneyValue}>{product.priceNum.toLocaleString('ru-RU')} сум/день</Text>
                         </View>
-                        {hasDeposit && (
-                            <View style={styles.moneyTile}>
-                                <Text style={styles.moneyLabel}>Депозит</Text>
-                                <Text style={styles.moneyValue}>{product.depositNum?.toLocaleString('ru-RU')} сум</Text>
-                            </View>
-                        )}
                         {!!product.minRentalDays && (
                             <View style={styles.moneyTile}>
                                 <Text style={styles.moneyLabel}>Минимум</Text>

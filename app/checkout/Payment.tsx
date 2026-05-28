@@ -60,7 +60,7 @@ export default function PaymentScreen() {
     return {
       title: 'Доставка Rentoo',
       icon: 'cube-outline' as const,
-      detail: deliveryAddress ? `${deliveryAddress}` : 'Yandex Доставка до двери',
+      detail: deliveryAddress ? `${deliveryAddress}` : 'Доставка до двери',
     };
   }, [deliveryMethodValue, pickupDistrict, deliveryAddress]);
 
@@ -136,7 +136,7 @@ export default function PaymentScreen() {
         type: 'rental_request',
         bookingId: booking.id,
         text: isDelivery
-          ? `Новый заказ: ${booking.itemTitle}. Rentoo оформит Yandex Доставку после оплаты.`
+          ? `Новый заказ: ${booking.itemTitle}. Арендатор выбрал доставку.`
           : `Новый заказ: ${booking.itemTitle}. Арендатор выбрал самовывоз.`,
       });
 
@@ -150,7 +150,7 @@ export default function PaymentScreen() {
       Alert.alert(
         'Заказ оформлен',
         isDelivery
-          ? 'Оплата прошла успешно. Rentoo создаст заказ Yandex Доставки и покажет статус в карточке сделки.'
+          ? 'Оплата прошла успешно. Rentoo оформит доставку и покажет статус в карточке сделки.'
           : 'Оплата прошла успешно. Точный адрес и телефон арендодателя открыты в карточке сделки.',
         [{ text: 'OK', onPress: () => router.replace('/(tabs)/profile') }]
       );
@@ -190,7 +190,7 @@ export default function PaymentScreen() {
           </View>
           {deliveryMethodValue === 'yandex_delivery' && (
             <View style={styles.amountLine}>
-              <Text style={styles.amountLineLabel}>Доставка Yandex</Text>
+              <Text style={styles.amountLineLabel}>Доставка</Text>
               <Text style={styles.amountLineValue}>{formatMoney(deliveryFeeNum)} сум</Text>
             </View>
           )}
