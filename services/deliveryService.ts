@@ -8,6 +8,10 @@ export interface DeliveryEstimateRequest {
     fromDistrict?: string;
     toAddress: string;
     category?: string;
+    fromLat?: number;
+    fromLng?: number;
+    toLat?: number;
+    toLng?: number;
 }
 
 export interface DeliveryEstimate {
@@ -28,7 +32,13 @@ export async function estimateYandexDelivery(
     if (cached) return cached;
 
     if (!MOCK_MODE) {
-        const estimate = await apiRequest<DeliveryEstimate>('POST', '/delivery/yandex/estimate', params);
+        const response = await apiRequest<any>('POST', '/delivery/calculate/', {
+            from_lat: params.fromLat ?? 41.2995,
+            from_lng: params.fromLng ?? 69.2401,
+            to_lat: params.toLat ?? 41.3111,
+            to_lng: params.toLng ?? 69.2797,
+        });
+        const estimate = normalizeEstimate(response);
         await writeCachedEstimate(cacheKey, estimate);
         return estimate;
     }
@@ -44,6 +54,16 @@ export async function estimateYandexDelivery(
     };
     await writeCachedEstimate(cacheKey, estimate);
     return estimate;
+}
+
+function normalizeEstimate(response: any): DeliveryEstimate {
+    return {
+        price: Number(response.price ?? response.cost ?? response.delivery_cost ?? 0),
+        etaMinutes: Number(response.eta_minutes ?? response.eta ?? 45),
+        serviceType: response.service_type ?? 'standard',
+        validUntil: response.valid_until ?? new Date(Date.now() + CACHE_TTL_MS).toISOString(),
+        note: response.note ?? 'Стоимость может незначительно измениться при оформлении заказа',
+    };
 }
 
 function buildCacheKey(params: DeliveryEstimateRequest) {

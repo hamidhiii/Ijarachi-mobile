@@ -7,8 +7,8 @@ import * as authService from '../../services/authService';
 
 export default function VerifyScreen() {
     const router = useRouter();
-    const { phone } = useLocalSearchParams();
-    const { login } = useAuth();
+    const { phone, name } = useLocalSearchParams();
+    const { login, updateUser } = useAuth();
     const [code, setCode] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -21,6 +21,11 @@ export default function VerifyScreen() {
         setLoading(true);
         try {
             await login(phone as string, code);
+            if (name) {
+                const displayName = Array.isArray(name) ? name[0] : name;
+                await authService.updateProfile({ name: displayName }).catch(() => null);
+                await updateUser({ name: displayName });
+            }
             router.replace('/(tabs)');
         } catch {
             Alert.alert('Ошибка', 'Неверный код или ошибка сервера');

@@ -38,6 +38,7 @@ const CATEGORY_EMOJI: Record<string, string> = {
 };
 
 const LOCATION_KEY = 'rentoo_user_location';
+const ONBOARDING_HINT_KEY = 'rentoo_seen_onboarding_hint';
 const LOCATIONS = [
   'Ташкент, Чиланзар',
   'Ташкент, Юнусабад',
@@ -65,11 +66,15 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [location, setLocation] = useState('Ташкент, Чиланзар');
   const [locationPickerOpen, setLocationPickerOpen] = useState(false);
+  const [showOnboardingHint, setShowOnboardingHint] = useState(false);
   const [locationQuery, setLocationQuery] = useState('');
 
   useEffect(() => {
     AsyncStorage.getItem(LOCATION_KEY).then(saved => {
       if (saved) setLocation(saved);
+    });
+    AsyncStorage.getItem(ONBOARDING_HINT_KEY).then(seen => {
+      if (!seen) setShowOnboardingHint(true);
     });
   }, []);
 
@@ -127,6 +132,11 @@ export default function HomeScreen() {
   );
 
   const firstName = (user?.name || 'Гость').split(' ')[0];
+
+  const closeOnboardingHint = useCallback(async () => {
+    setShowOnboardingHint(false);
+    try { await AsyncStorage.setItem(ONBOARDING_HINT_KEY, 'true'); } catch {}
+  }, []);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -304,6 +314,37 @@ export default function HomeScreen() {
 
         <View style={{ height: 120 }} />
       </ScrollView>
+
+      <Modal
+        visible={showOnboardingHint}
+        transparent
+        animationType="fade"
+        onRequestClose={closeOnboardingHint}
+      >
+        <View style={styles.hintBackdrop}>
+          <View style={styles.hintSheet}>
+            <View style={styles.hintIcon}>
+              <Ionicons name="sparkles-outline" size={26} color="#FFFFFF" />
+            </View>
+            <Text style={styles.hintTitle}>Быстрый старт</Text>
+            <View style={styles.hintRow}>
+              <Ionicons name="search-outline" size={18} color={Colors.primary} />
+              <Text style={styles.hintText}>Найдите вещь через поиск или категории.</Text>
+            </View>
+            <View style={styles.hintRow}>
+              <Ionicons name="calendar-outline" size={18} color={Colors.primary} />
+              <Text style={styles.hintText}>В карточке выберите даты, размер или количество.</Text>
+            </View>
+            <View style={styles.hintRow}>
+              <Ionicons name="shield-checkmark-outline" size={18} color={Colors.primary} />
+              <Text style={styles.hintText}>Перед первой сделкой приложение попросит MyID.</Text>
+            </View>
+            <TouchableOpacity style={styles.hintButton} onPress={closeOnboardingHint} activeOpacity={0.85}>
+              <Text style={styles.hintButtonText}>Понятно</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* LOCATION PICKER */}
       <Modal
@@ -625,4 +666,36 @@ const styles = StyleSheet.create({
     fontSize: 13,
     paddingVertical: 30,
   },
+  hintBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15,23,42,0.45)',
+    justifyContent: 'flex-end',
+    padding: 20,
+  },
+  hintSheet: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    padding: 20,
+  },
+  hintIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 16,
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  hintTitle: { fontSize: 20, fontWeight: '900', color: Colors.text, marginBottom: 14 },
+  hintRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 12 },
+  hintText: { flex: 1, fontSize: 14, color: '#475569', lineHeight: 20 },
+  hintButton: {
+    marginTop: 8,
+    backgroundColor: Colors.primary,
+    borderRadius: 16,
+    height: 52,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  hintButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
 });

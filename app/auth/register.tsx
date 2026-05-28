@@ -39,10 +39,9 @@ export default function RegisterScreen() {
         phone: `+998${phone}`,
         isPinflVerified: false,
       });
-      await authService.sendOTP(`+998${phone}`);
       router.push({
         pathname: '/auth/verify',
-        params: { phone: `+998${phone}` }
+        params: { phone: `+998${phone}`, name }
       });
     } catch {
       Alert.alert('Ошибка', 'Не удалось зарегистрироваться');

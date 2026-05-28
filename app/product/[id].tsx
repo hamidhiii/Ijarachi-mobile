@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, Image, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, Image, Modal, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
 import { SellerCard } from '../../components/SellerCard';
@@ -29,14 +29,45 @@ export default function ProductDetail() {
     const insets = useSafeAreaInsets();
 
     const [product, setProduct] = useState<Listing | null>(null);
+    const [similarListings, setSimilarListings] = useState<Listing[]>([]);
     const [loadingProduct, setLoadingProduct] = useState(true);
+    const [activeImageIndex, setActiveImageIndex] = useState(0);
+    const [zoomVisible, setZoomVisible] = useState(false);
+    const [zoomIndex, setZoomIndex] = useState(0);
 
     useEffect(() => {
-        listingService.getListingById(id as string).then(data => {
-            setProduct(data);
-        }).catch(() => {
-            setProduct(null);
-        }).finally(() => setLoadingProduct(false));
+        let cancelled = false;
+
+        async function loadProduct() {
+            setLoadingProduct(true);
+            setActiveImageIndex(0);
+            try {
+                const data = await listingService.getListingById(id as string);
+                if (cancelled) return;
+                setProduct(data);
+
+                if (data) {
+                    const related = await listingService.getListings({ category: data.category });
+                    if (!cancelled) {
+                        setSimilarListings(related.filter(item => item.id !== data.id).slice(0, 6));
+                    }
+                } else {
+                    setSimilarListings([]);
+                }
+            } catch {
+                if (!cancelled) {
+                    setProduct(null);
+                    setSimilarListings([]);
+                }
+            } finally {
+                if (!cancelled) setLoadingProduct(false);
+            }
+        }
+
+        loadProduct();
+        return () => {
+            cancelled = true;
+        };
     }, [id]);
 
     const today = new Date().toISOString().split('T')[0];
@@ -199,6 +230,21 @@ export default function ProductDetail() {
     const rating = product?.rating ?? 4.8;
     const reviewCount = product?.reviewCount ?? 0;
     const isWishlisted = product ? wishlist.includes(product.id) : false;
+    const galleryImages = useMemo(() => {
+        if (!product) return [];
+        return product.images?.length ? product.images : [product.image];
+    }, [product]);
+    const hasDeposit = !!product?.depositNum && product.depositNum > 0;
+
+    const handleGalleryScroll = (event: any) => {
+        const nextIndex = Math.round(event.nativeEvent.contentOffset.x / width);
+        if (nextIndex !== activeImageIndex) setActiveImageIndex(nextIndex);
+    };
+
+    const openZoom = (index: number) => {
+        setZoomIndex(index);
+        setZoomVisible(true);
+    };
 
     if (loadingProduct) {
         return (
@@ -227,17 +273,48 @@ export default function ProductDetail() {
             <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
             <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
                 <View style={styles.imageWrap}>
-                    <Image source={product.image} style={styles.mainImage} />
+                    <ScrollView
+                        horizontal
+                        pagingEnabled
+                        showsHorizontalScrollIndicator={false}
+                        onMomentumScrollEnd={handleGalleryScroll}
+                    >
+                        {galleryImages.map((image, index) => (
+                            <TouchableOpacity
+                                key={`gallery-${index}`}
+                                activeOpacity={0.95}
+                                onPress={() => openZoom(index)}
+                            >
+                                <Image source={image} style={styles.mainImage} />
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
                     <TouchableOpacity style={[styles.backBtn, { top: insets.top + 10 }]} onPress={() => router.back()}>
                         <Ionicons name="chevron-back" size={22} color={Colors.text} />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.heartBtn} onPress={() => toggleWishlist(product.id)}>
+                    <TouchableOpacity style={[styles.heartBtn, { top: insets.top + 10 }]} onPress={() => toggleWishlist(product.id)}>
                         <Ionicons
                             name={isWishlisted ? 'heart' : 'heart-outline'}
                             size={20}
                             color={isWishlisted ? '#EF4444' : Colors.text}
                         />
                     </TouchableOpacity>
+                    {galleryImages.length > 1 && (
+                        <>
+                            <View style={styles.photoDots}>
+                                {galleryImages.map((_, index) => (
+                                    <View
+                                        key={`dot-${index}`}
+                                        style={[styles.photoDot, activeImageIndex === index && styles.photoDotActive]}
+                                    />
+                                ))}
+                            </View>
+                            <View style={styles.photoCounter}>
+                                <Ionicons name="images-outline" size={13} color="#FFFFFF" />
+                                <Text style={styles.photoCounterText}>{activeImageIndex + 1}/{galleryImages.length}</Text>
+                            </View>
+                        </>
+                    )}
                 </View>
 
                 <View style={{ padding: 20 }}>
@@ -269,6 +346,35 @@ export default function ProductDetail() {
                         </View>
                     </View>
 
+                    {!!product.tags?.length && (
+                        <View style={styles.tagsRow}>
+                            {product.tags.map(tag => (
+                                <View key={tag} style={styles.tagChip}>
+                                    <Text style={styles.tagText}>#{tag}</Text>
+                                </View>
+                            ))}
+                        </View>
+                    )}
+
+                    <View style={styles.moneyGrid}>
+                        <View style={styles.moneyTile}>
+                            <Text style={styles.moneyLabel}>Аренда</Text>
+                            <Text style={styles.moneyValue}>{product.priceNum.toLocaleString('ru-RU')} сум/день</Text>
+                        </View>
+                        {hasDeposit && (
+                            <View style={styles.moneyTile}>
+                                <Text style={styles.moneyLabel}>Депозит</Text>
+                                <Text style={styles.moneyValue}>{product.depositNum?.toLocaleString('ru-RU')} сум</Text>
+                            </View>
+                        )}
+                        {!!product.minRentalDays && (
+                            <View style={styles.moneyTile}>
+                                <Text style={styles.moneyLabel}>Минимум</Text>
+                                <Text style={styles.moneyValue}>{product.minRentalDays} дн.</Text>
+                            </View>
+                        )}
+                    </View>
+
                     <View style={styles.divider} />
 
                     {isSizeCategory ? (
@@ -291,6 +397,17 @@ export default function ProductDetail() {
                     <Text style={styles.sectionTitle}>Описание</Text>
                     <Text style={styles.description}>{product.description}</Text>
 
+                    {!!product.characteristics?.length && (
+                        <View style={styles.characteristicsGrid}>
+                            {product.characteristics.map(item => (
+                                <View key={`${item.label}-${item.value}`} style={styles.characteristicItem}>
+                                    <Text style={styles.characteristicLabel}>{item.label}</Text>
+                                    <Text style={styles.characteristicValue}>{item.value}</Text>
+                                </View>
+                            ))}
+                        </View>
+                    )}
+
                     <View style={styles.divider} />
                     <Text style={styles.sectionTitle}>Владелец</Text>
                     <SellerCard
@@ -299,6 +416,37 @@ export default function ProductDetail() {
                         isVerified={product.seller.isVerified}
                         onPress={() => router.push(`/seller/${product.seller.id}` as any)}
                     />
+
+                    {!!similarListings.length && (
+                        <>
+                            <View style={styles.divider} />
+                            <Text style={styles.sectionTitle}>Похожие объявления</Text>
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={styles.similarList}
+                            >
+                                {similarListings.map(item => (
+                                    <TouchableOpacity
+                                        key={item.id}
+                                        style={styles.similarCard}
+                                        activeOpacity={0.85}
+                                        onPress={() => router.push({ pathname: '/product/[id]', params: { id: item.id } })}
+                                    >
+                                        <Image source={item.image} style={styles.similarImage} />
+                                        <View style={styles.similarBody}>
+                                            <Text style={styles.similarTitle} numberOfLines={2}>{item.title}</Text>
+                                            <Text style={styles.similarPrice}>{item.priceNum.toLocaleString('ru-RU')} сум</Text>
+                                            <View style={styles.similarMeta}>
+                                                <Ionicons name="location-outline" size={12} color="#94A3B8" />
+                                                <Text style={styles.similarLocation} numberOfLines={1}>{item.location}</Text>
+                                            </View>
+                                        </View>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </>
+                    )}
 
                     <View style={styles.divider} />
 
@@ -380,6 +528,37 @@ export default function ProductDetail() {
                 </View>
             </ScrollView>
 
+            <Modal visible={zoomVisible} transparent animationType="fade" onRequestClose={() => setZoomVisible(false)}>
+                <View style={styles.zoomBackdrop}>
+                    <TouchableOpacity
+                        style={[styles.zoomClose, { top: insets.top + 16 }]}
+                        onPress={() => setZoomVisible(false)}
+                        activeOpacity={0.85}
+                    >
+                        <Ionicons name="close" size={24} color="#FFFFFF" />
+                    </TouchableOpacity>
+                    <ScrollView
+                        horizontal
+                        pagingEnabled
+                        showsHorizontalScrollIndicator={false}
+                        contentOffset={{ x: zoomIndex * width, y: 0 }}
+                    >
+                        {galleryImages.map((image, index) => (
+                            <ScrollView
+                                key={`zoom-${index}`}
+                                style={styles.zoomPage}
+                                contentContainerStyle={styles.zoomPageContent}
+                                maximumZoomScale={3}
+                                minimumZoomScale={1}
+                                centerContent
+                            >
+                                <Image source={image} style={styles.zoomImage} resizeMode="contain" />
+                            </ScrollView>
+                        ))}
+                    </ScrollView>
+                </View>
+            </Modal>
+
             <View style={styles.bottomBar}>
                 <View>
                     <Text style={styles.totalLabel}>Итого за {daysCount} дн. {!isSizeCategory && quantity > 1 ? `(${quantity} шт.)` : ''}</Text>
@@ -410,6 +589,30 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
     },
     mainImage: { width: width, height: 360, borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
+    photoDots: {
+        position: 'absolute',
+        bottom: 16,
+        left: 0,
+        right: 0,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 6,
+    },
+    photoDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.6)' },
+    photoDotActive: { width: 18, backgroundColor: '#FFFFFF' },
+    photoCounter: {
+        position: 'absolute',
+        right: 16,
+        bottom: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        backgroundColor: 'rgba(15,23,42,0.62)',
+        borderRadius: 14,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+    },
+    photoCounterText: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
     titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12 },
     title: { fontSize: 22, fontWeight: '900', color: Colors.text, lineHeight: 28 },
     ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
@@ -432,9 +635,56 @@ const styles = StyleSheet.create({
     },
     availDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#10B981' },
     availText: { fontSize: 12, color: Colors.primary, fontWeight: '600' },
+    tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
+    tagChip: {
+        backgroundColor: '#F1F5F9',
+        borderRadius: 10,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+    },
+    tagText: { fontSize: 12, color: '#475569', fontWeight: '700' },
+    moneyGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 16 },
+    moneyTile: {
+        flexGrow: 1,
+        minWidth: '30%',
+        backgroundColor: '#F8FAFC',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        borderRadius: 14,
+        padding: 12,
+    },
+    moneyLabel: { fontSize: 11, color: '#64748B', fontWeight: '700', marginBottom: 5, textTransform: 'uppercase' },
+    moneyValue: { fontSize: 14, color: Colors.text, fontWeight: '900' },
     divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 20 },
     sectionTitle: { fontSize: 18, fontWeight: '700', color: '#000000', marginBottom: 15 },
     description: { fontSize: 15, color: '#64748B', lineHeight: 22 },
+    characteristicsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 16 },
+    characteristicItem: {
+        width: '48%',
+        minHeight: 72,
+        backgroundColor: '#F8FAFC',
+        borderRadius: 14,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: '#EEF2F7',
+    },
+    characteristicLabel: { fontSize: 11, color: '#64748B', fontWeight: '700', marginBottom: 6 },
+    characteristicValue: { fontSize: 14, color: Colors.text, fontWeight: '800', lineHeight: 18 },
+    similarList: { gap: 12, paddingRight: 4 },
+    similarCard: {
+        width: 158,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#EEF2F7',
+        backgroundColor: '#FFFFFF',
+        overflow: 'hidden',
+    },
+    similarImage: { width: '100%', height: 112, backgroundColor: '#F1F5F9' },
+    similarBody: { padding: 10 },
+    similarTitle: { fontSize: 13, color: Colors.text, fontWeight: '800', minHeight: 36, lineHeight: 18 },
+    similarPrice: { fontSize: 13, color: Colors.primary, fontWeight: '900', marginTop: 6 },
+    similarMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
+    similarLocation: { flex: 1, fontSize: 11, color: '#94A3B8' },
     calendarWrapper: { backgroundColor: '#FFFFFF', borderRadius: 25, padding: 10, borderWidth: 1, borderColor: '#F1F5F9' },
     bottomBar: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: '#FFFFFF', padding: 25, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingBottom: 35 },
     totalLabel: { fontSize: 13, color: '#64748B' },
@@ -512,4 +762,19 @@ const styles = StyleSheet.create({
 
     rangeInfoBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0F9FF', padding: 15, borderRadius: 15, marginTop: 15, gap: 10 },
     rangeText: { fontSize: 13, color: '#0369A1', fontWeight: '500' },
+    zoomBackdrop: { flex: 1, backgroundColor: '#000000' },
+    zoomClose: {
+        position: 'absolute',
+        right: 18,
+        zIndex: 20,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(255,255,255,0.16)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    zoomPage: { width },
+    zoomPageContent: { flexGrow: 1, justifyContent: 'center', alignItems: 'center' },
+    zoomImage: { width, height: '82%' },
 });

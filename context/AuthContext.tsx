@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { AUTH_TOKEN_KEY, AUTH_USER_KEY } from '../api/client';
+import { AUTH_REFRESH_KEY, AUTH_TOKEN_KEY, AUTH_USER_KEY } from '../api/client';
 import * as authService from '../services/authService';
 import { User } from '../types/user.types';
 
@@ -41,8 +41,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const login = async (phone: string, otp: string) => {
-        const { user: userData, token } = await authService.verifyOTP(phone, otp);
+        const { user: userData, token, refreshToken } = await authService.verifyOTP(phone, otp);
         await AsyncStorage.setItem(AUTH_TOKEN_KEY, token);
+        if (refreshToken) await AsyncStorage.setItem(AUTH_REFRESH_KEY, refreshToken);
         await AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(userData));
         setUser(userData);
         setIsLoggedIn(true);
@@ -54,14 +55,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (e) {
             console.warn('logout API failed, clearing session anyway', e);
         }
-        await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, AUTH_USER_KEY]);
+        await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, AUTH_REFRESH_KEY, AUTH_USER_KEY]);
         setUser(null);
         setIsLoggedIn(false);
     };
 
     const updateUser = async (patch: Partial<User>) => {
+        const serverUser = isLoggedIn && patch.name
+            ? await authService.updateProfile(patch).catch(() => null)
+            : null;
         setUser(prev => {
-            const next = prev ? { ...prev, ...patch } : prev;
+            const next = prev ? { ...prev, ...(serverUser ?? patch) } : prev;
             if (next) AsyncStorage.setItem(AUTH_USER_KEY, JSON.stringify(next)).catch(() => {});
             return next;
         });

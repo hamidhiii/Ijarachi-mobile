@@ -1,7 +1,7 @@
 import { apiRequest, MOCK_MODE } from '../api/client';
 import { CURRENT_USER_ID } from '../mocks/bookings';
 import { MOCK_CONVERSATIONS, MOCK_MESSAGES } from '../mocks/chat';
-import { ChatMessage, Conversation } from '../types/rental.types';
+import { ChatMessage, Conversation, MessageType } from '../types/rental.types';
 
 class ChatService {
     private conversations: Conversation[] = [...MOCK_CONVERSATIONS];
@@ -9,14 +9,16 @@ class ChatService {
 
     async getConversations(): Promise<Conversation[]> {
         if (!MOCK_MODE) {
-            return apiRequest<Conversation[]>('GET', '/conversations');
+            const response = await apiRequest<any>('GET', '/chat/conversations/');
+            return readList(response).map(mapConversation);
         }
         return this.conversations;
     }
 
     async getMessages(conversationId: string): Promise<ChatMessage[]> {
         if (!MOCK_MODE) {
-            return apiRequest<ChatMessage[]>('GET', `/conversations/${encodeURIComponent(conversationId)}/messages`);
+            const response = await apiRequest<any>('GET', `/chat/conversations/${encodeURIComponent(conversationId)}/messages/`);
+            return readList(response).map((message) => mapMessage(message, conversationId));
         }
         return this.messages[conversationId] || [];
     }
@@ -27,9 +29,23 @@ class ChatService {
         type: 'text' | 'rental_request';
         text?: string;
         bookingId?: string;
+        listingId?: string;
     }): Promise<ChatMessage> {
         if (!MOCK_MODE) {
-            return apiRequest<ChatMessage>('POST', '/messages', params);
+            let conversationId = params.conversationId;
+            if (!conversationId) {
+                const payload = params.bookingId
+                    ? { deal_id: params.bookingId }
+                    : params.listingId ? { listing_id: params.listingId } : {};
+                const conversation = await apiRequest<any>('POST', '/chat/conversations/', payload);
+                conversationId = String(conversation.id);
+            }
+            const response = await apiRequest<any>(
+                'POST',
+                `/chat/conversations/${encodeURIComponent(conversationId)}/messages/`,
+                { text: params.text || '' }
+            );
+            return mapMessage(response, conversationId);
         }
 
         let convId = params.conversationId;
@@ -80,3 +96,61 @@ class ChatService {
 }
 
 export const chatService = new ChatService();
+
+function readList(response: any): any[] {
+    if (Array.isArray(response)) return response;
+    if (Array.isArray(response?.results)) return response.results;
+    if (Array.isArray(response?.items)) return response.items;
+    return [];
+}
+
+function mapConversation(raw: any): Conversation {
+    return {
+        id: String(raw.id),
+        participants: readParticipants(raw),
+        lastMessage: raw.last_message ? mapMessage(raw.last_message, String(raw.id)) : undefined,
+        unreadCount: Number(raw.unread_count ?? raw.unreadCount ?? 0),
+        updatedAt: raw.updated_at ?? raw.updatedAt ?? raw.last_message?.created_at ?? new Date().toISOString(),
+    };
+}
+
+function readParticipants(raw: any): Conversation['participants'] {
+    const participants = raw.participants || raw.users || [];
+    if (Array.isArray(participants) && participants.length) {
+        return participants.map((user: any) => ({
+            id: String(user.id),
+            name: user.full_name ?? user.name ?? user.phone ?? 'Пользователь',
+            avatar: user.avatar,
+            isVerified: Boolean(user.is_verified_myid ?? user.is_verified ?? user.isPinflVerified),
+        }));
+    }
+
+    const peer = raw.peer || raw.other_user || raw.owner || raw.renter;
+    if (peer) {
+        return [
+            { id: CURRENT_USER_ID, name: 'Вы' },
+            {
+                id: String(peer.id),
+                name: peer.full_name ?? peer.name ?? peer.phone ?? 'Пользователь',
+                avatar: peer.avatar,
+                isVerified: Boolean(peer.is_verified_myid ?? peer.is_verified ?? peer.isPinflVerified),
+            },
+        ];
+    }
+
+    return [{ id: CURRENT_USER_ID, name: 'Вы' }];
+}
+
+function mapMessage(raw: any, fallbackConversationId: string): ChatMessage {
+    const bookingId = raw.deal_id ?? raw.booking_id ?? raw.deal?.id ?? raw.booking?.id;
+    const type: MessageType = bookingId || raw.type === 'rental_request' ? 'rental_request' : 'text';
+    return {
+        id: String(raw.id),
+        conversationId: String(raw.conversation_id ?? raw.conversation ?? fallbackConversationId),
+        senderId: String(raw.sender?.id ?? raw.sender_id ?? raw.user_id ?? ''),
+        type,
+        text: raw.text ?? raw.message ?? '',
+        bookingId: bookingId ? String(bookingId) : undefined,
+        createdAt: raw.created_at ?? raw.createdAt ?? new Date().toISOString(),
+    };
+}

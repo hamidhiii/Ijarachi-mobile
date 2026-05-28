@@ -1,13 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /**
- * Базовый URL API. Задаётся через переменную окружения EXPO_PUBLIC_API_URL.
+ * Базовый URL API. Можно передать backend root или уже готовый /api/v1 URL.
  * Примеры:
- *   EXPO_PUBLIC_API_URL=https://api.rentoo.uz/api/v1
+ *   EXPO_PUBLIC_API_URL=https://api.rentoo.uz
  *   EXPO_PUBLIC_API_URL=https://staging-api.rentoo.uz/api/v1
  */
-export const BASE_URL =
-    process.env.EXPO_PUBLIC_API_URL || 'https://api.rentoo.uz/api/v1';
+export const BASE_URL = normalizeApiBaseUrl(
+    process.env.EXPO_PUBLIC_API_URL || 'https://api.rentoo.uz/api/v1'
+);
 
 /**
  * Mock-режим. Пока нет реального бэкенда — все сервисы возвращают
@@ -36,7 +37,7 @@ export async function apiRequest<T>(
     method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE',
     path: string,
     body?: object,
-    opts?: { headers?: Record<string, string>; signal?: AbortSignal }
+    opts?: { headers?: Record<string, string>; signal?: AbortSignal; skipRefresh?: boolean }
 ): Promise<T> {
     if (MOCK_MODE) {
         throw new ApiError(
@@ -71,7 +72,14 @@ export async function apiRequest<T>(
     }
 
     if (res.status === 401) {
-        // TODO: реализовать refresh-token flow, когда бэкенд его поддержит
+        if (opts?.skipRefresh) {
+            await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, AUTH_REFRESH_KEY, AUTH_USER_KEY]);
+            throw new ApiError('Сессия истекла. Войдите заново.', 401, 'UNAUTHORIZED');
+        }
+        const refreshed = await refreshAccessToken();
+        if (refreshed) {
+            return apiRequest<T>(method, path, body, { ...opts, skipRefresh: true });
+        }
         await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, AUTH_REFRESH_KEY, AUTH_USER_KEY]);
         throw new ApiError('Сессия истекла. Войдите заново.', 401, 'UNAUTHORIZED');
     }
@@ -81,7 +89,7 @@ export async function apiRequest<T>(
         let code: string | undefined;
         try {
             const err = await res.json();
-            message = err.message || err.error || message;
+            message = err.detail || err.message || err.error || message;
             code = err.code;
         } catch {
             // не JSON — оставим HTTP-код
@@ -93,4 +101,32 @@ export async function apiRequest<T>(
     if (res.status === 204) return undefined as unknown as T;
 
     return res.json() as Promise<T>;
+}
+
+function normalizeApiBaseUrl(input: string) {
+    const trimmed = input.replace(/\/+$/, '');
+    return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;
+}
+
+async function refreshAccessToken(): Promise<boolean> {
+    const refresh = await AsyncStorage.getItem(AUTH_REFRESH_KEY);
+    if (!refresh) return false;
+
+    try {
+        const res = await fetch(`${BASE_URL}/auth/refresh/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+            },
+            body: JSON.stringify({ refresh }),
+        });
+        if (!res.ok) return false;
+        const json = await res.json();
+        if (!json.access) return false;
+        await AsyncStorage.setItem(AUTH_TOKEN_KEY, json.access);
+        return true;
+    } catch {
+        return false;
+    }
 }

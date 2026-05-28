@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -14,13 +15,13 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { apiRequest, MOCK_MODE } from '../../api/client';
 import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../context/AuthContext';
+import * as authService from '../../services/authService';
 
 export default function MyIdScreen() {
     const router = useRouter();
-    const { user, updateUser } = useAuth();
+    const { updateUser } = useAuth();
 
     const [pinfl, setPinfl] = useState('');
     const [passportSeries, setPassportSeries] = useState('');
@@ -28,21 +29,16 @@ export default function MyIdScreen() {
 
     const pinflClean = pinfl.replace(/\D/g, '');
     const seriesClean = passportSeries.trim().toUpperCase();
-    const isValid = pinflClean.length === 14 && seriesClean.length >= 7;
+    const isValid = true;
 
     const handleVerify = async () => {
-        if (!isValid) {
-            Alert.alert('Проверьте данные', 'Введите корректный ПИНФЛ (14 цифр) и серию паспорта.');
-            return;
-        }
         setLoading(true);
         try {
-            if (!MOCK_MODE) {
-                await apiRequest('POST', '/auth/myid/verify', {
-                    pinfl: pinflClean,
-                    passportSeries: seriesClean,
-                    userId: user?.id,
-                });
+            const session = await authService.startMyIdVerification();
+            if (session.url) {
+                await WebBrowser.openAuthSessionAsync(session.url, 'rentoo://auth/myid');
+                const verified = await authService.getVerificationStatus();
+                if (!verified) throw new Error('verification_not_completed');
             } else {
                 await new Promise(r => setTimeout(r, 1200));
             }
@@ -55,7 +51,7 @@ export default function MyIdScreen() {
         } catch {
             Alert.alert(
                 'Ошибка верификации',
-                'Не удалось подтвердить личность. Проверьте данные и попробуйте ещё раз.'
+                'Не удалось подтвердить личность через MyID. Попробуйте ещё раз.'
             );
         } finally {
             setLoading(false);
@@ -107,7 +103,7 @@ export default function MyIdScreen() {
                         </View>
                     </View>
 
-                    <Text style={styles.label}>ПИНФЛ (14 цифр)</Text>
+                    <Text style={styles.label}>ПИНФЛ (для dev-проверки)</Text>
                     <View style={styles.inputWrapper}>
                         <Ionicons name="card-outline" size={20} color="#94A3B8" style={styles.inputIcon} />
                         <TextInput
@@ -124,7 +120,7 @@ export default function MyIdScreen() {
                             <Ionicons name="checkmark-circle" size={20} color="#10B981" />
                         )}
                     </View>
-                    <Text style={styles.hint}>Указан в паспорте или свидетельстве о рождении</Text>
+                    <Text style={styles.hint}>В боевом режиме данные вводятся на стороне MyID</Text>
 
                     <Text style={[styles.label, { marginTop: 20 }]}>Серия и номер паспорта</Text>
                     <View style={styles.inputWrapper}>

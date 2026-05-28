@@ -62,6 +62,7 @@ export default function OrderSummary() {
   const [product, setProduct] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
   const [location, setLocation] = useState('');
+  const [deliveryCoords, setDeliveryCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [mapOpen, setMapOpen] = useState(false);
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod | null>(null);
   const [pickupAgreement, setPickupAgreement] = useState(false);
@@ -95,6 +96,10 @@ export default function OrderSummary() {
           fromDistrict: product.seller.district || product.location,
           toAddress: location,
           category: product.category,
+          fromLat: product.latitude,
+          fromLng: product.longitude,
+          toLat: deliveryCoords?.lat,
+          toLng: deliveryCoords?.lng,
         });
         if (!cancelled) setDeliveryEstimate(estimate);
       } catch {
@@ -111,10 +116,11 @@ export default function OrderSummary() {
     return () => {
       cancelled = true;
     };
-  }, [deliveryMethod, location, product]);
+  }, [deliveryCoords, deliveryMethod, location, product]);
 
-  const handleSelectLocation = async (address: string) => {
+  const handleSelectLocation = async (address: string, coords?: { lat: number; lng: number }) => {
     setLocation(address);
+    if (coords) setDeliveryCoords(coords);
     try { await AsyncStorage.setItem(LOCATION_KEY, address); } catch {}
   };
 
@@ -378,7 +384,7 @@ export default function OrderSummary() {
       <YandexMapPicker
         visible={mapOpen}
         onClose={() => setMapOpen(false)}
-        onSelect={(address) => handleSelectLocation(address)}
+        onSelect={(address, coords) => handleSelectLocation(address, coords)}
         initialAddress={location}
       />
     </SafeAreaView>

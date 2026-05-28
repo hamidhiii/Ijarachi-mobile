@@ -1,55 +1,46 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, RefreshControl, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
-
-interface Notification {
-    id: string;
-    title: string;
-    message: string;
-    time: string;
-    isRead: boolean;
-    type: 'booking' | 'system' | 'chat';
-}
-
-const MOCK_NOTIFICATIONS: Notification[] = [
-    {
-        id: '1',
-        title: 'Новое бронирование',
-        message: 'Ваше свадебное платье забронировали на 15-17 апреля.',
-        time: '5 мин назад',
-        isRead: false,
-        type: 'booking',
-    },
-    {
-        id: '2',
-        title: 'Верификация MyID',
-        message: 'Личность подтверждена. Теперь рядом с вашим профилем появится зелёная галочка.',
-        time: '2 часа назад',
-        isRead: true,
-        type: 'system',
-    },
-    {
-        id: '3',
-        title: 'Новое сообщение',
-        message: 'Алина: "Здравствуйте! Подскажите, какой длины шлейф?"',
-        time: 'Вчера',
-        isRead: true,
-        type: 'chat',
-    },
-];
+import { AppNotification, getNotifications, markNotificationRead } from '../../services/notificationService';
 
 export default function NotificationsScreen() {
     const router = useRouter();
-    const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+    const [notifications, setNotifications] = useState<AppNotification[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+
+    const loadNotifications = useCallback(async () => {
+        try {
+            const data = await getNotifications();
+            setNotifications(data);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        loadNotifications();
+    }, [loadNotifications]);
 
     const markAllRead = () => {
         setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+        notifications.filter(n => !n.isRead).forEach(n => {
+            markNotificationRead(n.id).catch(() => {});
+        });
     };
 
-    const renderItem = ({ item }: { item: Notification }) => (
-        <TouchableOpacity style={[styles.card, !item.isRead && styles.unreadCard]}>
+    const handlePress = (item: AppNotification) => {
+        if (!item.isRead) {
+            setNotifications(prev => prev.map(n => n.id === item.id ? { ...n, isRead: true } : n));
+            markNotificationRead(item.id).catch(() => {});
+        }
+    };
+
+    const renderItem = ({ item }: { item: AppNotification }) => (
+        <TouchableOpacity style={[styles.card, !item.isRead && styles.unreadCard]} onPress={() => handlePress(item)}>
             <View style={[styles.iconBox, { backgroundColor: item.type === 'booking' ? '#ECFDF5' : '#F1F5F9' }]}>
                 <Ionicons
                     name={item.type === 'booking' ? 'calendar' : item.type === 'chat' ? 'chatbubble' : 'notifications'}
@@ -80,18 +71,34 @@ export default function NotificationsScreen() {
                 </TouchableOpacity>
             </View>
 
-            <FlatList
-                data={notifications}
-                renderItem={renderItem}
-                keyExtractor={item => item.id}
-                contentContainerStyle={styles.list}
-                ListEmptyComponent={
-                    <View style={styles.empty}>
-                        <Ionicons name="notifications-off-outline" size={64} color="#CBD5E1" />
-                        <Text style={styles.emptyText}>Уведомлений пока нет</Text>
-                    </View>
-                }
-            />
+            {loading ? (
+                <View style={styles.centered}>
+                    <ActivityIndicator color={Colors.primary} />
+                </View>
+            ) : (
+                <FlatList
+                    data={notifications}
+                    renderItem={renderItem}
+                    keyExtractor={item => item.id}
+                    contentContainerStyle={styles.list}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={() => {
+                                setRefreshing(true);
+                                loadNotifications();
+                            }}
+                            tintColor={Colors.primary}
+                        />
+                    }
+                    ListEmptyComponent={
+                        <View style={styles.empty}>
+                            <Ionicons name="notifications-off-outline" size={64} color="#CBD5E1" />
+                            <Text style={styles.emptyText}>Уведомлений пока нет</Text>
+                        </View>
+                    }
+                />
+            )}
         </SafeAreaView>
     );
 }
@@ -120,6 +127,7 @@ const styles = StyleSheet.create({
     time: { fontSize: 11, color: '#94A3B8' },
     message: { fontSize: 14, color: '#64748B', lineHeight: 20 },
     dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.primary, marginLeft: 10 },
+    centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     empty: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 100 },
     emptyText: { fontSize: 16, color: '#94A3B8', marginTop: 15 }
 });

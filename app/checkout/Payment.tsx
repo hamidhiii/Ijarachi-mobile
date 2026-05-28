@@ -1,12 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Linking, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
 import { useAuth } from '../../context/AuthContext';
 import { chatService } from '../../services/chatService';
 import * as listingService from '../../services/listingService';
-import { createBooking } from '../../services/rentalService';
+import { createBooking, startDealPayment } from '../../services/rentalService';
 import { Listing } from '../../types/listing.types';
 import { DeliveryMethod } from '../../types/rental.types';
 
@@ -139,6 +139,12 @@ export default function PaymentScreen() {
           ? `Новый заказ: ${booking.itemTitle}. Rentoo оформит Yandex Доставку после оплаты.`
           : `Новый заказ: ${booking.itemTitle}. Арендатор выбрал самовывоз.`,
       });
+
+      const paymentSession = await startDealPayment(booking.id, method!);
+      const paymentUrl = paymentSession.deeplink || paymentSession.paymentUrl;
+      if (paymentUrl) {
+        Linking.openURL(paymentUrl).catch(() => {});
+      }
 
       setLoading(false);
       Alert.alert(

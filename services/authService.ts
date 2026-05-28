@@ -1,4 +1,5 @@
-import { apiRequest, MOCK_MODE } from '../api/client';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiRequest, AUTH_REFRESH_KEY, MOCK_MODE } from '../api/client';
 import { User } from '../types/user.types';
 
 // Мок текущего пользователя
@@ -20,7 +21,7 @@ export async function sendOTP(phone: string): Promise<boolean> {
         await _delay(800);
         return true;
     }
-    await apiRequest<{ ok: boolean }>('POST', '/auth/otp/send', { phone });
+    await apiRequest<{ ok: boolean }>('POST', '/auth/sms/send/', { phone });
     return true;
 }
 
@@ -35,13 +36,21 @@ export async function verifyOTP(
         return {
             user: { ...MOCK_USER, phone },
             token: 'mock_jwt_token_rentoo',
+            refreshToken: 'mock_refresh_token_rentoo',
         };
     }
-    return apiRequest<{ user: User; token: string; refreshToken?: string }>(
+    const response = await apiRequest<{
+        user?: any;
+        access?: string;
+        token?: string;
+        refresh?: string;
+        refreshToken?: string;
+    }>(
         'POST',
-        '/auth/otp/verify',
+        '/auth/login/',
         { phone, code }
     );
+    return normalizeAuthResponse(response, phone);
 }
 
 /** РЕГИСТРАЦИЯ */
@@ -54,13 +63,21 @@ export async function register(
         return {
             user: { ...MOCK_USER, ...userData } as User,
             token: 'mock_jwt_token_rentoo',
+            refreshToken: 'mock_refresh_token_rentoo',
         };
     }
-    return apiRequest<{ user: User; token: string; refreshToken?: string }>(
+    const response = await apiRequest<{
+        user?: any;
+        access?: string;
+        token?: string;
+        refresh?: string;
+        refreshToken?: string;
+    }>(
         'POST',
-        '/auth/register',
-        userData
+        '/auth/register/',
+        { phone: userData.phone }
     );
+    return normalizeAuthResponse(response, userData.phone);
 }
 
 /** ВЫЙТИ */
@@ -70,7 +87,8 @@ export async function logout(): Promise<void> {
         return;
     }
     try {
-        await apiRequest<void>('POST', '/auth/logout');
+        const refresh = await AsyncStorage.getItem(AUTH_REFRESH_KEY);
+        await apiRequest<void>('POST', '/auth/logout/', refresh ? { refresh } : undefined);
     } catch {
         // молча игнорируем — всё равно чистим локально
     }
@@ -82,7 +100,64 @@ export async function getMe(): Promise<User> {
         await _delay(150);
         return MOCK_USER;
     }
-    return apiRequest<User>('GET', '/auth/me');
+    const profile = await apiRequest<any>('GET', '/profile/');
+    return normalizeUser(profile);
+}
+
+export async function updateProfile(patch: Partial<User>): Promise<User> {
+    if (MOCK_MODE) {
+        await _delay(150);
+        return { ...MOCK_USER, ...patch };
+    }
+    const profile = await apiRequest<any>('PATCH', '/profile/', {
+        full_name: patch.name,
+    });
+    return normalizeUser(profile);
+}
+
+export async function getVerificationStatus(): Promise<boolean> {
+    if (MOCK_MODE) {
+        await _delay(150);
+        return MOCK_USER.isPinflVerified;
+    }
+    const response = await apiRequest<any>('GET', '/users/me/verification/');
+    return Boolean(response.is_verified_myid ?? response.is_verified ?? response.verified);
+}
+
+export async function startMyIdVerification(): Promise<{ url?: string; state?: string }> {
+    if (MOCK_MODE) {
+        await _delay(400);
+        return { url: undefined, state: 'mock-myid-state' };
+    }
+    const response = await apiRequest<any>('POST', '/myid/start/');
+    return {
+        url: response.url || response.auth_url || response.authorization_url || response.redirect_url,
+        state: response.state,
+    };
+}
+
+function normalizeAuthResponse(
+    response: { user?: any; access?: string; token?: string; refresh?: string; refreshToken?: string },
+    phone?: string
+): { user: User; token: string; refreshToken?: string } {
+    return {
+        user: response.user ? normalizeUser(response.user) : { ...MOCK_USER, phone: phone || MOCK_USER.phone },
+        token: response.access || response.token || '',
+        refreshToken: response.refresh || response.refreshToken,
+    };
+}
+
+function normalizeUser(raw: any): User {
+    return {
+        id: String(raw.id ?? raw.uuid ?? MOCK_USER.id),
+        name: raw.full_name ?? raw.name ?? MOCK_USER.name,
+        phone: raw.phone ?? MOCK_USER.phone,
+        avatar: raw.avatar,
+        isPinflVerified: Boolean(raw.is_verified_myid ?? raw.isPinflVerified ?? raw.is_verified),
+        rating: Number(raw.rating ?? MOCK_USER.rating),
+        reviewCount: Number(raw.review_count ?? raw.reviewCount ?? MOCK_USER.reviewCount),
+        createdAt: raw.created_at ?? raw.createdAt ?? new Date().toISOString(),
+    };
 }
 
 function _delay(ms: number) {
