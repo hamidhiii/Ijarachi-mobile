@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../../constants/Colors';
-import { AppNotification, getNotifications, markNotificationRead } from '../../services/notificationService';
+import { AppNotification, getNotifications, markAllNotificationsRead, markNotificationRead } from '../../services/notificationService';
 
 export default function NotificationsScreen() {
     const router = useRouter();
@@ -27,8 +27,10 @@ export default function NotificationsScreen() {
 
     const markAllRead = () => {
         setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-        notifications.filter(n => !n.isRead).forEach(n => {
-            markNotificationRead(n.id).catch(() => {});
+        markAllNotificationsRead().catch(() => {
+            notifications.filter(n => !n.isRead).forEach(n => {
+                markNotificationRead(n.id).catch(() => {});
+            });
         });
     };
 

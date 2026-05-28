@@ -23,6 +23,7 @@ export async function getListings(filters?: {
     priceMin?: number;
     priceMax?: number;
     ordering?: string;
+    ownerId?: string;
 }): Promise<Listing[]> {
     if (!MOCK_MODE) {
         const qs = new URLSearchParams();
@@ -31,6 +32,7 @@ export async function getListings(filters?: {
         if (filters?.priceMin) qs.set('price_min', String(filters.priceMin));
         if (filters?.priceMax) qs.set('price_max', String(filters.priceMax));
         if (filters?.ordering) qs.set('ordering', filters.ordering);
+        if (filters?.ownerId) qs.set('owner', filters.ownerId);
         const path = `/listings/${qs.toString() ? `?${qs.toString()}` : ''}`;
         const response = await apiRequest<any>('GET', path);
         return readList(response).map(mapListing);
@@ -44,6 +46,9 @@ export async function getListings(filters?: {
     if (filters?.search) {
         const q = filters.search.toLowerCase();
         result = result.filter(i => i.title.toLowerCase().includes(q));
+    }
+    if (filters?.ownerId) {
+        result = result.filter(i => i.seller.id === filters.ownerId);
     }
     return result;
 }
@@ -141,6 +146,55 @@ export async function getMyListings(userId: string): Promise<Listing[]> {
     return _listings.filter(i => i.seller?.id === userId);
 }
 
+export async function getPublicUserListings(userId: string): Promise<Listing[]> {
+    if (!MOCK_MODE) {
+        const response = await apiRequest<any>('GET', `/users/${encodeURIComponent(userId)}/listings/`);
+        return readList(response).map(mapListing);
+    }
+    await _delay(200);
+    return _listings.filter(i => i.seller?.id === userId);
+}
+
+export async function getListingAvailability(listingId: string): Promise<string[]> {
+    if (!MOCK_MODE) {
+        const response = await apiRequest<any>('GET', `/listings/${encodeURIComponent(listingId)}/availability/`);
+        const dates = response.blocked_dates ?? response.blockedDates ?? response.dates ?? response.results;
+        return Array.isArray(dates) ? dates.map(String) : [];
+    }
+    await _delay(100);
+    return _listings.find(i => i.id === listingId)?.blockedDates ?? [];
+}
+
+export async function updateListingAvailability(listingId: string, blockedDates: string[]): Promise<string[]> {
+    if (!MOCK_MODE) {
+        const response = await apiRequest<any>('PATCH', `/listings/${encodeURIComponent(listingId)}/availability/`, {
+            blocked_dates: blockedDates,
+        });
+        const dates = response.blocked_dates ?? response.blockedDates ?? response.dates ?? blockedDates;
+        return Array.isArray(dates) ? dates.map(String) : blockedDates;
+    }
+    await _delay(150);
+    _listings = _listings.map(item => item.id === listingId ? { ...item, blockedDates } : item);
+    return blockedDates;
+}
+
+export interface ListingReview {
+    id: string;
+    rating: number;
+    comment: string;
+    authorName: string;
+    createdAt: string;
+}
+
+export async function getListingReviews(listingId: string): Promise<ListingReview[]> {
+    if (!MOCK_MODE) {
+        const response = await apiRequest<any>('GET', `/listings/${encodeURIComponent(listingId)}/reviews/`);
+        return readList(response).map(mapReview);
+    }
+    await _delay(100);
+    return [];
+}
+
 function _delay(ms: number) {
     return new Promise(r => setTimeout(r, ms));
 }
@@ -230,6 +284,16 @@ function mapListing(raw: any): Listing {
         rating: Number(raw.rating ?? 0),
         reviewCount: Number(raw.review_count ?? raw.reviewCount ?? 0),
         blockedDates: raw.blocked_dates ?? raw.blockedDates ?? [],
+    };
+}
+
+function mapReview(raw: any): ListingReview {
+    return {
+        id: String(raw.id),
+        rating: Number(raw.rating ?? 0),
+        comment: raw.comment ?? raw.text ?? '',
+        authorName: raw.author?.full_name ?? raw.author?.name ?? raw.user?.full_name ?? raw.user?.name ?? 'Пользователь',
+        createdAt: raw.created_at ?? raw.createdAt ?? new Date().toISOString(),
     };
 }
 

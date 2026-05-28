@@ -53,6 +53,14 @@ export async function markNotificationRead(id: string): Promise<void> {
     await apiRequest<void>('POST', `/notifications/${encodeURIComponent(id)}/read/`);
 }
 
+export async function markAllNotificationsRead(): Promise<void> {
+    if (MOCK_MODE) {
+        await delay(100);
+        return;
+    }
+    await apiRequest<void>('POST', '/notifications/read-all/');
+}
+
 function readList(response: any): any[] {
     if (Array.isArray(response)) return response;
     if (Array.isArray(response?.results)) return response.results;

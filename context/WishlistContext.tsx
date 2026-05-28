@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { MOCK_MODE } from '../api/client';
+import { getFavorites, addFavorite, removeFavorite } from '../services/favoriteService';
 
 const WISHLIST_STORAGE_KEY = 'wishlist';
 
@@ -16,11 +18,22 @@ export const WishlistProvider = ({ children }: { children: React.ReactNode }) =>
 
   useEffect(() => {
     const loadWishlist = async () => {
+      let localWishlist: string[] = [];
       try {
         const saved = await AsyncStorage.getItem(WISHLIST_STORAGE_KEY);
-        if (saved) setWishlist(JSON.parse(saved));
+        localWishlist = saved ? JSON.parse(saved) : [];
+        setWishlist(localWishlist);
       } catch {
         await AsyncStorage.removeItem(WISHLIST_STORAGE_KEY);
+      }
+
+      if (!MOCK_MODE) {
+        getFavorites()
+          .then(async serverWishlist => {
+            setWishlist(serverWishlist);
+            await AsyncStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(serverWishlist));
+          })
+          .catch(() => setWishlist(localWishlist));
       }
     };
     loadWishlist();
@@ -28,10 +41,13 @@ export const WishlistProvider = ({ children }: { children: React.ReactNode }) =>
 
   const toggleWishlist = useCallback(async (id: string) => {
     setWishlist(prev => {
-      const next = prev.includes(id)
+      const wasFavorite = prev.includes(id);
+      const next = wasFavorite
         ? prev.filter(item => item !== id)
         : [...prev, id];
       AsyncStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(next)).catch(() => {});
+      const sync = wasFavorite ? removeFavorite(id) : addFavorite(id);
+      sync.catch(() => {});
       return next;
     });
   }, []);

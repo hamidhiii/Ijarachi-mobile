@@ -60,7 +60,10 @@ export default function EditListingScreen() {
 
     const loadListing = useCallback(async () => {
         try {
-            const data = await listingService.getListingById(id as string);
+            const [data, availability] = await Promise.all([
+                listingService.getListingById(id as string),
+                listingService.getListingAvailability(id as string).catch(() => null),
+            ]);
             if (data) {
                 setTitle(data.title);
                 setDescription(data.description);
@@ -70,7 +73,7 @@ export default function EditListingScreen() {
                 setQuantity((data.maxQuantity || 1).toString());
                 setUnit(data.unit || 'шт');
                 setImage(data.image);
-                setBlockedDates(data.blockedDates || []);
+                setBlockedDates(availability ?? data.blockedDates ?? []);
             }
         } catch {
             Alert.alert('Ошибка', 'Не удалось загрузить данные');
@@ -99,8 +102,8 @@ export default function EditListingScreen() {
                 availableSizes: isSizeCategory ? selectedSizes : [],
                 maxQuantity: isSizeCategory ? 1 : parseInt(quantity),
                 unit,
-                blockedDates,
             });
+            await listingService.updateListingAvailability(id as string, blockedDates);
             Alert.alert('Успех', 'Изменения сохранены', [
                 { text: 'OK', onPress: () => router.back() }
             ]);

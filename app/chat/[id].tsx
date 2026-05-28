@@ -54,7 +54,8 @@ export default function ChatDetailScreen() {
 
     useEffect(() => {
         loadChat();
-    }, [loadChat]);
+        chatService.markConversationRead(id).catch(() => {});
+    }, [id, loadChat]);
 
     const handleSend = async () => {
         if (!inputText.trim() || !conversation) return;

@@ -155,6 +155,20 @@ export async function calculateDealDelivery(
     };
 }
 
+export async function createDealReview(
+    id: string,
+    params: { rating: number; comment: string }
+): Promise<void> {
+    if (!MOCK_MODE) {
+        await apiRequest<void>('POST', `/deals/${encodeURIComponent(id)}/review/`, {
+            rating: params.rating,
+            comment: params.comment,
+        });
+        return;
+    }
+    await _delay(150);
+}
+
 // ── Приватные хэлперы ─────────────────────────────────────────────────────────
 
 function _delay(ms: number): Promise<void> {

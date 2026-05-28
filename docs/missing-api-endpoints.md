@@ -4,37 +4,14 @@
 
 ## Нужны мобильному приложению
 
-- `GET /api/v1/users/:id/`
-  - Публичный профиль арендодателя для экрана seller profile.
-  - Сейчас mobile временно собирает данные продавца из `GET /api/v1/listings/`.
+- `PATCH /api/v1/favorites/:listing_id/`
+  - Не обязателен: текущий API закрывает избранное через `POST /favorites/` и `DELETE /favorites/:listing_id/`.
 
-- `GET /api/v1/users/:id/listings/` или фильтр `GET /api/v1/listings/?owner=:id`
-  - Публичные объявления конкретного арендодателя.
-  - Сейчас mobile временно грузит общий список и фильтрует на клиенте.
+- `GET /api/v1/reviews/me/`
+  - Не обязателен для MVP: может понадобиться, если нужен отдельный экран всех моих отзывов.
 
-- `DELETE /api/v1/listings/:id/`
-  - Удаление своего объявления из экрана "Мои объявления".
-  - В collection есть detail/update, но delete не описан.
-
-- `PATCH /api/v1/listings/:id/availability/` или документированное поле `blocked_dates`
-  - Управление занятыми датами объявления.
-  - Сейчас mobile отправляет `blockedDates` через update listing, но contract не описан.
-
-- `GET /api/v1/favorites/`, `POST /api/v1/favorites/`, `DELETE /api/v1/favorites/:listing_id/`
-  - Синхронизация избранного между устройствами.
-  - Сейчас wishlist локальный.
-
-- `GET /api/v1/listings/:id/reviews/` и `POST /api/v1/deals/:id/review/`
-  - Отзывы и рейтинг после завершения сделки.
-  - Сейчас mobile только отображает агрегированные `rating/review_count`, если они приходят в listing.
-
-- `POST /api/v1/chat/conversations/:id/read/`
-  - Сброс unread counter после открытия чата.
-  - Сейчас collection дает список/сообщения, но mark-read для чата нет.
-
-- `POST /api/v1/notifications/read-all/`
-  - Массово прочитать все уведомления.
-  - Сейчас mobile вызывает `/notifications/:id/read/` по одному уведомлению.
+- `POST /api/v1/auth/phone/change/cancel/`
+  - Не обязателен: в collection есть send/verify смены телефона, но нет отмены процесса.
 
 ## Provider-gated, включать после договоров
 

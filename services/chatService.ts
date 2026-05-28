@@ -93,6 +93,16 @@ class ChatService {
 
         return newMessage;
     }
+
+    async markConversationRead(conversationId: string): Promise<void> {
+        if (!MOCK_MODE) {
+            await apiRequest<void>('POST', `/chat/conversations/${encodeURIComponent(conversationId)}/read/`);
+            return;
+        }
+        this.conversations = this.conversations.map(conversation =>
+            conversation.id === conversationId ? { ...conversation, unreadCount: 0 } : conversation
+        );
+    }
 }
 
 export const chatService = new ChatService();
